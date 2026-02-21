@@ -5,52 +5,106 @@ import { Zap } from 'lucide-react'
 import { CUPSSearch } from '@/components/cups/CUPSSearch'
 import { CUPSResult } from '@/components/cups/CUPSResult'
 import { CUPSRecientes } from '@/components/cups/CUPSRecientes'
-import { mockCUPSDatabase, mockCUPSRecientes } from '@/lib/mock-data'
 import type { PuntoSuministro, CUPSBusquedaReciente } from '@/lib/types'
 
+// ── MEGA reference prices per tariff ──────────────────────────────────────
+
+import type { PeriodoTarifa } from '@/lib/types'
+
+const MEGA_PRECIOS: Record<string, { periodo: PeriodoTarifa; precio: number }[]> = {
+  '2.0TD':  [{ periodo: 'P1', precio: 0.128 }, { periodo: 'P2', precio: 0.094 }, { periodo: 'P3', precio: 0.062 }],
+  '3.0TD':  [{ periodo: 'P1', precio: 0.142 }, { periodo: 'P2', precio: 0.098 }, { periodo: 'P3', precio: 0.068 },
+             { periodo: 'P4', precio: 0.058 }, { periodo: 'P5', precio: 0.052 }, { periodo: 'P6', precio: 0.048 }],
+  'RL.1':   [{ periodo: 'P1', precio: 0.055 }],
+  'RL.2':   [{ periodo: 'P1', precio: 0.068 }],
+  'default':[{ periodo: 'P1', precio: 0.120 }],
+}
+
+function getMegaPrecios(tarifa: string | null) {
+  if (!tarifa) return MEGA_PRECIOS['default']
+  const key = Object.keys(MEGA_PRECIOS).find(k => k !== 'default' && tarifa.toUpperCase().includes(k))
+  return key ? MEGA_PRECIOS[key] : MEGA_PRECIOS['default']
+}
+
+function inferTipo(tarifa: string | null): 'electricidad' | 'gas' {
+  if (!tarifa) return 'electricidad'
+  return /^RL|^G[0-9]|gas/i.test(tarifa) ? 'gas' : 'electricidad'
+}
+
+function calcAhorro(consumoAnual: number, megaPrecios: { precio: number }[]): number {
+  const avgMega = megaPrecios.reduce((s, p) => s + p.precio, 0) / megaPrecios.length
+  return Math.round(Math.max(0, (0.19 - avgMega) * consumoAnual))
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────
+
 export default function CUPSPage() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
   const [resultado, setResultado] = useState<PuntoSuministro | null>(null)
-  const [recientes, setRecientes] = useState<CUPSBusquedaReciente[]>(mockCUPSRecientes)
+  const [recientes, setRecientes] = useState<CUPSBusquedaReciente[]>([])
 
   async function handleSearch(cups: string) {
     setLoading(true)
     setError(null)
     setResultado(null)
 
-    // Simula latencia de API
-    await new Promise((r) => setTimeout(r, 800))
+    try {
+      const res = await fetch(`/api/cups/search?cups=${encodeURIComponent(cups)}`)
+      const data = await res.json()
 
-    const punto = mockCUPSDatabase[cups]
-
-    if (!punto) {
-      setError(`No se encontró ningún suministro con el CUPS ${cups}. Verifica el código e inténtalo de nuevo.`)
-      setLoading(false)
-      return
-    }
-
-    setResultado(punto)
-
-    // Añadir a recientes si no está ya
-    setRecientes((prev) => {
-      const ya = prev.find((r) => r.cups === cups)
-      if (ya) return prev
-      const nueva: CUPSBusquedaReciente = {
-        cups: punto.cups,
-        titular: punto.titular,
-        tipo: punto.tipo,
-        fecha: new Date().toISOString(),
+      if (!res.ok || data.error) {
+        setError(data.error ?? `Error ${res.status}`)
+        return
       }
-      return [nueva, ...prev].slice(0, 5)
-    })
 
-    setLoading(false)
+      const tarifa       = data.tarifa ?? 'No disponible'
+      const tipo         = inferTipo(data.tarifa)
+      const megaPrecios  = getMegaPrecios(data.tarifa)
+      const consumoAnual = data.consumoAnual ?? 0
+      const ahorro       = consumoAnual ? calcAhorro(consumoAnual, megaPrecios) : 0
+
+      const potencias = ((data.potencias ?? []) as { periodo: string; potencia: number }[]).map(p => ({
+        periodo: p.periodo as 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6',
+        potencia: p.potencia,
+      }))
+
+      const punto: PuntoSuministro = {
+        cups,
+        tipo,
+        estado:                  'activo',
+        titular:                 data.titular ?? 'Titular no disponible',
+        nif:                     data.nif ?? undefined,
+        direccion:               data.direccion ?? '—',
+        municipio:               data.municipio ?? '—',
+        provincia:               data.provincia ?? '—',
+        cp:                      data.cp ?? '—',
+        comercializadora:        data.comercializadora ?? data.distribuidora ?? 'No disponible',
+        tarifa,
+        contador:                /telegestionado|smart|7|8/i.test(data.tipoMedida ?? '') ? 'telegestionado' : 'analógico',
+        potencias:               potencias.length ? potencias : [{ periodo: 'P1', potencia: 0 }],
+        consumo_anual_kwh:       consumoAnual,
+        consumo_mensual:         data.consumoMensual ?? [],
+        ultima_lectura:          new Date().toISOString().split('T')[0],
+        ahorro_estimado_anual:   ahorro,
+        tarifa_mega_recomendada: tipo === 'gas' ? `Gas MEGA ${tarifa}` : `MEGA ${tarifa}`,
+        precios_mega:            megaPrecios,
+      }
+
+      setResultado(punto)
+      setRecientes(prev => {
+        if (prev.find(r => r.cups === cups)) return prev
+        return [{ cups, titular: punto.titular, tipo, fecha: new Date().toISOString() }, ...prev].slice(0, 5)
+      })
+    } catch {
+      setError('Error de conexión. Verifica tu acceso a la API SIPS.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="space-y-6 max-w-[1100px]">
-      {/* Page header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
           <Zap className="h-5 w-5 text-primary" />
@@ -58,23 +112,18 @@ export default function CUPSPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Consulta CUPS</h1>
           <p className="text-sm text-muted-foreground">
-            Código Unificado de Punto de Suministro — datos del contrato y ahorro potencial
+            Código Unificado de Punto de Suministro — datos reales vía SIPS
           </p>
         </div>
       </div>
 
-      {/* Layout: search + recientes */}
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4">
           <CUPSSearch onSearch={handleSearch} loading={loading} error={error} />
           {resultado && <CUPSResult punto={resultado} />}
         </div>
-
         <div>
-          <CUPSRecientes
-            recientes={recientes}
-            onSelect={(cups) => handleSearch(cups)}
-          />
+          <CUPSRecientes recientes={recientes} onSelect={handleSearch} />
         </div>
       </div>
     </div>
