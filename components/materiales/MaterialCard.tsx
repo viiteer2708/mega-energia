@@ -13,9 +13,10 @@ const formatoConfig: Record<MaterialFormato, { icon: LucideIcon; color: string; 
 
 interface MaterialCardProps {
   material: Material
+  dropboxFolder?: string
 }
 
-export function MaterialCard({ material }: MaterialCardProps) {
+export function MaterialCard({ material, dropboxFolder }: MaterialCardProps) {
   const fmt = formatoConfig[material.formato]
   const Icon = fmt.icon
 
@@ -59,13 +60,25 @@ export function MaterialCard({ material }: MaterialCardProps) {
                 <span>·</span>
                 <span>{material.descargas.toLocaleString('es-ES')} descargas</span>
               </div>
-              <button
-                className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary transition-all group-hover:border-primary/20"
-                onClick={() => alert(`Descargando: ${material.titulo}`)}
-              >
-                <Download className="h-3 w-3" />
-                Descargar
-              </button>
+              {dropboxFolder ? (
+                <a
+                  href={dropboxFolder}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary transition-all group-hover:border-primary/20"
+                >
+                  <Download className="h-3 w-3" />
+                  Descargar
+                </a>
+              ) : (
+                <button
+                  className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary transition-all group-hover:border-primary/20"
+                  disabled
+                >
+                  <Download className="h-3 w-3" />
+                  Descargar
+                </button>
+              )}
             </div>
           </div>
         </div>

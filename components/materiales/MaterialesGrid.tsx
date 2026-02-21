@@ -18,9 +18,10 @@ const CATEGORIAS: { value: MaterialCategoria | 'todos'; label: string; emoji: st
 
 interface MaterialesGridProps {
   materiales: Material[]
+  dropboxFolder?: string
 }
 
-export function MaterialesGrid({ materiales }: MaterialesGridProps) {
+export function MaterialesGrid({ materiales, dropboxFolder }: MaterialesGridProps) {
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<MaterialCategoria | 'todos'>('todos')
   const [soloDestacados, setSoloDestacados] = useState(false)
@@ -101,7 +102,7 @@ export function MaterialesGrid({ materiales }: MaterialesGridProps) {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map(m => <MaterialCard key={m.id} material={m} />)}
+          {filtered.map(m => <MaterialCard key={m.id} material={m} dropboxFolder={dropboxFolder} />)}
         </div>
       )}
     </div>
