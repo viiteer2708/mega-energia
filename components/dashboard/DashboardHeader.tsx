@@ -29,15 +29,15 @@ function AnimatedName({ name }: AnimatedNameProps) {
         <Text
           font="https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hiJ-Ek-_EeA.woff"
           fontSize={0.7}
-          color="#f97316"
+          color="#3DBFBF"
           anchorX="center"
           anchorY="middle"
           letterSpacing={0.05}
         >
           {name}
           <meshStandardMaterial
-            color="#f97316"
-            emissive="#7c2d12"
+            color="#3DBFBF"
+            emissive="#0a4040"
             emissiveIntensity={0.5}
             metalness={0.4}
             roughness={0.15}
@@ -53,8 +53,8 @@ function Scene({ name }: { name: string }) {
     <>
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 5, 5]} intensity={1.8} color="#ffffff" />
-      <pointLight position={[-3, 2, 2]} intensity={2.5} color="#f97316" decay={2} />
-      <pointLight position={[3, -2, 1]} intensity={1.2} color="#fb923c" decay={2} />
+      <pointLight position={[-3, 2, 2]} intensity={2.5} color="#3DBFBF" decay={2} />
+      <pointLight position={[3, -2, 1]} intensity={1.2} color="#1a9e9e" decay={2} />
       <Environment preset="night" />
       <AnimatedName name={name} />
     </>

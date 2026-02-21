@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -13,7 +14,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Bolt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -78,21 +78,29 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div
         className={cn(
-          'flex items-center gap-3 px-4 py-6',
+          'flex items-center px-4 py-5',
           collapsed && 'justify-center px-2'
         )}
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 border border-primary/30">
-          <Bolt className="h-5 w-5 text-primary" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-wide text-foreground">
-              MEGA
-            </span>
-            <span className="text-xs font-medium tracking-widest text-primary">
-              ENERGÍA
-            </span>
+        {collapsed ? (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white border border-border/30 overflow-hidden">
+            <Image
+              src="/logo.jpg"
+              alt="MEGA ENERGÍA"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
+          </div>
+        ) : (
+          <div className="flex h-10 items-center rounded-lg bg-white border border-border/30 overflow-hidden px-2">
+            <Image
+              src="/logo.jpg"
+              alt="MEGA ENERGÍA"
+              width={140}
+              height={40}
+              className="object-contain"
+            />
           </div>
         )}
       </div>

@@ -43,7 +43,7 @@ export default function DashboardPage() {
           value={kpis.contratos_mes.toString()}
           variacion={kpis.contratos_variacion}
           icon={FileText}
-          accentColor="orange"
+          accentColor="teal"
           subtitle="contratos firmados"
         />
         <KPICard
@@ -73,7 +73,7 @@ export default function DashboardPage() {
           title="Ranking en la red"
           value={`#${kpis.ranking}`}
           icon={Award}
-          accentColor="orange"
+          accentColor="teal"
           subtitle="de 18 comerciales"
         />
       </div>

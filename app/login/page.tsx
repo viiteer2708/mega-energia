@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Bolt, Eye, EyeOff, Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { signIn } from './actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -38,18 +39,19 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 shadow-lg">
-            <Bolt className="h-9 w-9 text-primary mega-glow" />
+          <div className="flex items-center justify-center rounded-2xl bg-white border border-border/30 shadow-lg px-6 py-3">
+            <Image
+              src="/logo.jpg"
+              alt="MEGA ENERGÍA"
+              width={200}
+              height={60}
+              className="object-contain"
+              priority
+            />
           </div>
-          <div className="text-center">
-            <h1 className="text-3xl font-black tracking-tight text-foreground">
-              MEGA{' '}
-              <span className="text-primary mega-glow">ENERGÍA</span>
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Panel Comercial — Acceso restringido
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Panel Comercial — Acceso restringido
+          </p>
         </div>
 
         {/* Login card */}
