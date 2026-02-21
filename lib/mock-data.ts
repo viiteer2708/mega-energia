@@ -6,6 +6,8 @@ import type {
   ComercialRanking,
   Comunicado,
   EmailStats,
+  PuntoSuministro,
+  CUPSBusquedaReciente,
 } from '@/lib/types'
 
 export const mockKPIs: KPIData = {
@@ -88,6 +90,126 @@ export const mockRanking: ComercialRanking[] = [
   { posicion: 3, nombre: 'Carlos García', contratos: 23, facturacion: 48320 },
   { posicion: 4, nombre: 'Laura Sánchez', contratos: 19, facturacion: 41800 },
   { posicion: 5, nombre: 'David Torres', contratos: 16, facturacion: 34600 },
+]
+
+// ── CUPS ─────────────────────────────────────────────────────────────────────
+
+export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
+  'ES0021000012345678AB': {
+    cups: 'ES0021000012345678AB',
+    tipo: 'electricidad',
+    estado: 'activo',
+    titular: 'Antonio Martínez López',
+    nif: '12345678A',
+    direccion: 'Calle Mayor, 14, 3º B',
+    municipio: 'Madrid',
+    provincia: 'Madrid',
+    cp: '28001',
+    comercializadora: 'Iberdrola Clientes S.A.U.',
+    tarifa: '2.0TD',
+    contador: 'telegestionado',
+    potencias: [
+      { periodo: 'P1', potencia: 3.45 },
+      { periodo: 'P2', potencia: 3.45 },
+    ],
+    consumo_anual_kwh: 4820,
+    consumo_mensual: [
+      { mes: 'Mar', kwh: 340 }, { mes: 'Abr', kwh: 310 },
+      { mes: 'May', kwh: 295 }, { mes: 'Jun', kwh: 380 },
+      { mes: 'Jul', kwh: 510 }, { mes: 'Ago', kwh: 540 },
+      { mes: 'Sep', kwh: 420 }, { mes: 'Oct', kwh: 360 },
+      { mes: 'Nov', kwh: 390 }, { mes: 'Dic', kwh: 460 },
+      { mes: 'Ene', kwh: 440 }, { mes: 'Feb', kwh: 375 },
+    ],
+    ultima_lectura: '2026-02-15',
+    ahorro_estimado_anual: 186,
+    tarifa_mega_recomendada: 'Hogar Inteligente 2.0TD',
+    precios_mega: [
+      { periodo: 'P1', precio: 0.128 },
+      { periodo: 'P2', precio: 0.094 },
+      { periodo: 'P3', precio: 0.062 },
+    ],
+  },
+  'ES0031405000123456YZ': {
+    cups: 'ES0031405000123456YZ',
+    tipo: 'electricidad',
+    estado: 'activo',
+    titular: 'Talleres Hernández, S.A.',
+    nif: 'A28123456',
+    direccion: 'Polígono Industrial Norte, Nave 7',
+    municipio: 'Alcalá de Henares',
+    provincia: 'Madrid',
+    cp: '28800',
+    comercializadora: 'Endesa Energía S.A.U.',
+    tarifa: '3.0TD',
+    contador: 'telegestionado',
+    potencias: [
+      { periodo: 'P1', potencia: 45 },
+      { periodo: 'P2', potencia: 45 },
+      { periodo: 'P3', potencia: 45 },
+      { periodo: 'P4', potencia: 45 },
+      { periodo: 'P5', potencia: 45 },
+      { periodo: 'P6', potencia: 45 },
+    ],
+    consumo_anual_kwh: 98400,
+    consumo_mensual: [
+      { mes: 'Mar', kwh: 7200 }, { mes: 'Abr', kwh: 7800 },
+      { mes: 'May', kwh: 8100 }, { mes: 'Jun', kwh: 8900 },
+      { mes: 'Jul', kwh: 9400 }, { mes: 'Ago', kwh: 7600 },
+      { mes: 'Sep', kwh: 8200 }, { mes: 'Oct', kwh: 8500 },
+      { mes: 'Nov', kwh: 8800 }, { mes: 'Dic', kwh: 9100 },
+      { mes: 'Ene', kwh: 8700 }, { mes: 'Feb', kwh: 6100 },
+    ],
+    ultima_lectura: '2026-02-18',
+    ahorro_estimado_anual: 2840,
+    tarifa_mega_recomendada: 'Empresa Plus 3.0TD',
+    precios_mega: [
+      { periodo: 'P1', precio: 0.142 },
+      { periodo: 'P2', precio: 0.098 },
+      { periodo: 'P3', precio: 0.068 },
+      { periodo: 'P4', precio: 0.058 },
+      { periodo: 'P5', precio: 0.052 },
+      { periodo: 'P6', precio: 0.048 },
+    ],
+  },
+  'ES0980500000123456PQ': {
+    cups: 'ES0980500000123456PQ',
+    tipo: 'gas',
+    estado: 'activo',
+    titular: 'Restaurante El Rincón, S.L.',
+    nif: 'B91234567',
+    direccion: 'Calle Serrano, 52, Local',
+    municipio: 'Madrid',
+    provincia: 'Madrid',
+    cp: '28006',
+    comercializadora: 'Naturgy Iberia S.A.',
+    tarifa: 'RL.2',
+    contador: 'analógico',
+    potencias: [
+      { periodo: 'P1', potencia: 70 },
+    ],
+    consumo_anual_kwh: 52000,
+    consumo_mensual: [
+      { mes: 'Mar', kwh: 3200 }, { mes: 'Abr', kwh: 2900 },
+      { mes: 'May', kwh: 2600 }, { mes: 'Jun', kwh: 2800 },
+      { mes: 'Jul', kwh: 3100 }, { mes: 'Ago', kwh: 2400 },
+      { mes: 'Sep', kwh: 3600 }, { mes: 'Oct', kwh: 4200 },
+      { mes: 'Nov', kwh: 5100 }, { mes: 'Dic', kwh: 6200 },
+      { mes: 'Ene', kwh: 6800 }, { mes: 'Feb', kwh: 5100 },
+    ],
+    ultima_lectura: '2026-02-10',
+    ahorro_estimado_anual: 1240,
+    tarifa_mega_recomendada: 'Gas Hostelería RL.2',
+    precios_mega: [
+      { periodo: 'P1', precio: 0.068 },
+    ],
+  },
+}
+
+export const mockCUPSRecientes: CUPSBusquedaReciente[] = [
+  { cups: 'ES0031405000123456YZ', titular: 'Talleres Hernández, S.A.',  tipo: 'electricidad', fecha: '2026-02-21T10:30:00' },
+  { cups: 'ES0021000012345678AB', titular: 'Antonio Martínez López',     tipo: 'electricidad', fecha: '2026-02-20T16:00:00' },
+  { cups: 'ES0980500000123456PQ', titular: 'Restaurante El Rincón, S.L.', tipo: 'gas',          fecha: '2026-02-19T11:15:00' },
 ]
 
 // ── Emails ──────────────────────────────────────────────────────────────────

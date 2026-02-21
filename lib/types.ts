@@ -47,6 +47,62 @@ export interface ComercialRanking {
   avatar_url?: string
 }
 
+// ── CUPS ─────────────────────────────────────────────────────────────────────
+
+export type CUPSTipo = 'electricidad' | 'gas'
+export type CUPSEstado = 'activo' | 'inactivo' | 'baja'
+export type TipoContador = 'telegestionado' | 'analógico'
+export type PeriodoTarifa = 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6'
+
+export interface ConsumoMensual {
+  mes: string
+  kwh: number
+}
+
+export interface PrecioPeriodo {
+  periodo: PeriodoTarifa
+  precio: number // €/kWh
+}
+
+export interface PotenciaPeriodo {
+  periodo: PeriodoTarifa
+  potencia: number // kW
+}
+
+export interface PuntoSuministro {
+  cups: string
+  tipo: CUPSTipo
+  estado: CUPSEstado
+  // Titular
+  titular: string
+  nif?: string
+  // Dirección
+  direccion: string
+  municipio: string
+  provincia: string
+  cp: string
+  // Contrato actual
+  comercializadora: string
+  tarifa: string
+  contador: TipoContador
+  potencias: PotenciaPeriodo[]
+  // Consumo
+  consumo_anual_kwh: number
+  consumo_mensual: ConsumoMensual[]
+  ultima_lectura: string
+  // Análisis MEGA
+  ahorro_estimado_anual: number
+  tarifa_mega_recomendada: string
+  precios_mega: PrecioPeriodo[]
+}
+
+export interface CUPSBusquedaReciente {
+  cups: string
+  titular: string
+  tipo: CUPSTipo
+  fecha: string
+}
+
 // ── Emails ──────────────────────────────────────────────────────────────────
 
 export type EmailTipo =
