@@ -139,3 +139,150 @@ export interface EmailStats {
   tasa_respuesta: number
   rebotados: number
 }
+
+
+// ── Comparador ────────────────────────────────────────────────────────────────────────────
+
+export type TipoSuministroComp = 'electricidad' | 'gas' | 'dual'
+export type PeriodoComp = '2.0TD' | '3.0TD' | 'RL.1' | 'RL.2' | 'RL.3'
+
+export interface TarifaCompetidor {
+  id: string
+  comercializadora: string
+  nombre_tarifa: string
+  tipo: 'electricidad' | 'gas'
+  precio_p1: number      // €/kWh P1
+  precio_p2?: number     // €/kWh P2
+  precio_p3?: number     // €/kWh P3
+  potencia_anual: number // €/kW·año
+  cuota_fija: number     // €/mes
+  es_mega: boolean
+  destacado?: boolean
+}
+
+export interface ComparadorInputData {
+  tipo: TipoSuministroComp
+  consumo_anual_kwh: number
+  consumo_p1_pct: number   // % consumo en P1
+  consumo_p2_pct: number   // % consumo en P2
+  consumo_p3_pct: number   // % consumo en P3
+  potencia_kw: number
+  tarifa_actual: string
+  precio_actual_kwh: number // precio medio actual €/kWh
+}
+
+export interface ResultadoTarifa {
+  tarifa: TarifaCompetidor
+  coste_energia_anual: number
+  coste_potencia_anual: number
+  coste_fijo_anual: number
+  coste_total_anual: number
+  ahorro_vs_actual: number
+}
+
+// ── Materiales ────────────────────────────────────────────────────────────────
+
+export type MaterialCategoria =
+  | 'tarifas'
+  | 'contratos'
+  | 'presentaciones'
+  | 'formularios'
+  | 'marketing'
+  | 'normativa'
+
+export type MaterialFormato = 'PDF' | 'DOCX' | 'PPTX' | 'XLSX' | 'IMG'
+
+export interface Material {
+  id: string
+  titulo: string
+  descripcion: string
+  categoria: MaterialCategoria
+  formato: MaterialFormato
+  tamaño: string        // "2.4 MB"
+  fecha_actualizacion: string
+  descargas: number
+  destacado?: boolean
+  nuevo?: boolean
+}
+
+
+// ── CRM ───────────────────────────────────────────────────────────────────────
+
+export type ClienteEstado = 'activo' | 'prospecto' | 'inactivo' | 'baja'
+export type ClienteTipo = 'hogar' | 'empresa' | 'autonomo'
+export type OportunidadEtapa =
+  | 'prospecto'
+  | 'contactado'
+  | 'propuesta'
+  | 'negociacion'
+  | 'ganado'
+  | 'perdido'
+export type OportunidadPrioridad = 'alta' | 'media' | 'baja'
+
+export interface Cliente {
+  id: string
+  nombre: string
+  empresa?: string
+  nif?: string
+  email: string
+  telefono: string
+  tipo: ClienteTipo
+  estado: ClienteEstado
+  comercializadora_actual?: string
+  cups_count: number
+  contratos_mega: number
+  ahorro_estimado?: number
+  fecha_alta?: string
+  ultima_actividad: string
+  etiquetas?: string[]
+}
+
+export interface Oportunidad {
+  id: string
+  cliente_nombre: string
+  cliente_empresa?: string
+  tipo_producto: 'luz_hogar' | 'luz_empresa' | 'gas_hogar' | 'gas_empresa' | 'dual'
+  etapa: OportunidadEtapa
+  prioridad: OportunidadPrioridad
+  valor_estimado: number
+  fecha_creacion: string
+  fecha_seguimiento?: string
+  notas?: string
+}
+
+export interface CRMStats {
+  total_clientes: number
+  clientes_activos: number
+  prospectos: number
+  oportunidades_abiertas: number
+  valor_pipeline: number
+  conversiones_mes: number
+}
+
+// ── Tutoriales ────────────────────────────────────────────────────────────────
+
+export type TutorialCategoria =
+  | 'ventas'
+  | 'tecnico'
+  | 'herramientas'
+  | 'normativa'
+  | 'producto'
+
+export type TutorialFormato = 'video' | 'articulo' | 'webinar'
+export type TutorialNivel = 'básico' | 'intermedio' | 'avanzado'
+
+export interface Tutorial {
+  id: string
+  titulo: string
+  descripcion: string
+  categoria: TutorialCategoria
+  formato: TutorialFormato
+  nivel: TutorialNivel
+  duracion_min: number
+  fecha_publicacion: string
+  autor: string
+  vistas: number
+  destacado?: boolean
+  nuevo?: boolean
+  tags: string[]
+}
