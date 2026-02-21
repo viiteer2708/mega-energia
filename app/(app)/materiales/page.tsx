@@ -2,8 +2,8 @@ import { Package, Download, FolderOpen } from 'lucide-react'
 import { MaterialesGrid } from '@/components/materiales/MaterialesGrid'
 import { mockMateriales } from '@/lib/mock-data'
 
-const DROPBOX_FOLDER  = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrb6dg7hsxknyw8&dl=0'
-const DROPBOX_ZIP     = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrb6dg7hsxknyw8&dl=1'
+const DROPBOX_FOLDER  = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrm6dg7hsxknyw8&dl=0'
+const DROPBOX_ZIP     = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrm6dg7hsxknyw8&dl=1'
 
 export default function MaterialesPage() {
   const total = mockMateriales.length
