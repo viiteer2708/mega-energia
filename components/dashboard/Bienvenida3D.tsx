@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef } from 'react'
 
 /* ─── Types ─── */
 
@@ -8,20 +8,21 @@ interface Bienvenida3DProps {
   userName: string
 }
 
-interface DecorDot {
-  x: number // normalized 0-1
-  y: number // normalized 0-1
-  r: number // radius in px
-  opacity: number
+interface Star {
+  x: number
+  y: number
+  r: number
+  base: number // base opacity
+  speed: number // twinkle speed
 }
 
 type Breakpoint = 'mobile' | 'tablet' | 'desktop'
 
 /* ─── Constants ─── */
 
-const CYAN = { r: 0, g: 229, b: 204 }
+const CYAN = 'rgba(0,229,204,'
 const LAYER_COUNTS: Record<Breakpoint, number> = { mobile: 3, tablet: 5, desktop: 8 }
-const DOT_COUNT = 25
+const STAR_COUNT = 80
 const TICK_SPACING = 40
 
 /* ─── Main Component ─── */
@@ -31,28 +32,21 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
   const crossRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Label DOM refs for direct manipulation (no React re-renders)
   const labelXRef = useRef<HTMLSpanElement>(null)
   const labelYRef = useRef<HTMLSpanElement>(null)
   const labelDRef = useRef<HTMLSpanElement>(null)
   const labelAngleRef = useRef<HTMLSpanElement>(null)
-
-  // Label container refs for positioning via parallax
   const labelContainerRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null])
 
-  // Animation state
   const rotX = useRef(0)
   const rotY = useRef(0)
   const targetRotX = useRef(0)
   const targetRotY = useRef(0)
   const rafId = useRef(0)
 
-  // Mouse state (updated in pointermove, read in RAF)
   const mousePos = useRef({ x: 0, y: 0, normX: 0, normY: 0, active: false })
   const hudValues = useRef({ x: '0.00', y: '0.00', d: '0.00', angle: '0.0' })
-
-  // Decorative dots (generated once)
-  const dotsRef = useRef<DecorDot[]>([])
+  const starsRef = useRef<Star[]>([])
 
   const [breakpoint, setBreakpoint] = useState<Breakpoint>('desktop')
 
@@ -65,20 +59,20 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
   const isMobile = breakpoint === 'mobile'
   const layerCount = LAYER_COUNTS[breakpoint]
 
-  /* ─── Generate decorative dots once ─── */
+  /* ─── Generate stars once ─── */
   useEffect(() => {
-    if (dotsRef.current.length === 0) {
-      const dots: DecorDot[] = []
-      for (let i = 0; i < DOT_COUNT; i++) {
-        dots.push({
-          x: Math.random(),
-          y: Math.random(),
-          r: 0.5 + Math.random() * 1.5,
-          opacity: 0.05 + Math.random() * 0.15,
-        })
-      }
-      dotsRef.current = dots
+    if (starsRef.current.length > 0) return
+    const stars: Star[] = []
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: Math.random(),
+        y: Math.random(),
+        r: Math.random() < 0.12 ? 1.0 + Math.random() * 0.8 : 0.2 + Math.random() * 0.6,
+        base: 0.2 + Math.random() * 0.5,
+        speed: 0.3 + Math.random() * 2,
+      })
     }
+    starsRef.current = stars
   }, [])
 
   /* ─── Breakpoint detection ─── */
@@ -94,7 +88,7 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  /* ─── Canvas sizing with ResizeObserver ─── */
+  /* ─── Canvas sizing ─── */
   useEffect(() => {
     if (isMobile) return
     const canvas = canvasRef.current
@@ -119,96 +113,75 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
   }, [isMobile])
 
   /* ─── Canvas drawing ─── */
-  const drawCanvas = useCallback(() => {
+  const drawCanvas = useCallback((time: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const mp = mousePos.current
-
     const w = canvas.clientWidth
     const h = canvas.clientHeight
 
     ctx.clearRect(0, 0, w, h)
 
+    const c = (a: number) => `${CYAN}${a})`
+
+    // Stars — always visible, twinkle
+    for (const s of starsRef.current) {
+      const twinkle = 0.5 + 0.5 * Math.sin(time * 0.001 * s.speed + s.x * 100)
+      ctx.fillStyle = c(s.base * twinkle)
+      ctx.beginPath()
+      ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
     if (!mp.active) return
 
-    const cyanStr = (a: number) => `rgba(${CYAN.r},${CYAN.g},${CYAN.b},${a})`
-
-    // ─ Crosshair extended lines (dashed)
+    // Dashed crosshair lines
     ctx.save()
     ctx.setLineDash([4, 6])
-    ctx.strokeStyle = cyanStr(0.08)
+    ctx.strokeStyle = c(0.08)
     ctx.lineWidth = 0.5
-    // Horizontal
     ctx.beginPath()
     ctx.moveTo(0, mp.y)
     ctx.lineTo(w, mp.y)
     ctx.stroke()
-    // Vertical
     ctx.beginPath()
     ctx.moveTo(mp.x, 0)
     ctx.lineTo(mp.x, h)
     ctx.stroke()
     ctx.restore()
 
-    // ─ Connection lines from crosshair to each label
-    const labelPositions = [
-      { x: 24, y: 24 },                       // top-left
-      { x: w - 24, y: 24 },                   // top-right
-      { x: 24, y: h - 24 },                   // bottom-left
-      { x: w - 24, y: h - 24 },               // bottom-right
+    // Connection lines to labels
+    const lps = [
+      { x: 24, y: 24 },
+      { x: w - 24, y: 24 },
+      { x: 24, y: h - 24 },
+      { x: w - 24, y: h - 24 },
     ]
-    const labelCount = breakpoint === 'tablet' ? 3 : 4
+    const lc = breakpoint === 'tablet' ? 3 : 4
     ctx.save()
-    ctx.strokeStyle = cyanStr(0.15)
+    ctx.strokeStyle = c(0.15)
     ctx.lineWidth = 0.5
-    ctx.setLineDash([])
-    for (let i = 0; i < labelCount; i++) {
-      const lp = labelPositions[i]
+    for (let i = 0; i < lc; i++) {
       ctx.beginPath()
       ctx.moveTo(mp.x, mp.y)
-      ctx.lineTo(lp.x, lp.y)
+      ctx.lineTo(lps[i].x, lps[i].y)
       ctx.stroke()
     }
     ctx.restore()
 
-    // ─ Tick marks on all 4 edges
+    // Tick marks
     ctx.save()
-    ctx.strokeStyle = cyanStr(0.12)
+    ctx.strokeStyle = c(0.12)
     ctx.lineWidth = 0.5
-    const tickLen = 6
-    // Top & Bottom
     for (let x = TICK_SPACING; x < w; x += TICK_SPACING) {
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, tickLen)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(x, h)
-      ctx.lineTo(x, h - tickLen)
-      ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 6); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(x, h); ctx.lineTo(x, h - 6); ctx.stroke()
     }
-    // Left & Right
     for (let y = TICK_SPACING; y < h; y += TICK_SPACING) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(tickLen, y)
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(w, y)
-      ctx.lineTo(w - tickLen, y)
-      ctx.stroke()
-    }
-    ctx.restore()
-
-    // ─ Decorative dots
-    ctx.save()
-    for (const dot of dotsRef.current) {
-      ctx.fillStyle = cyanStr(dot.opacity)
-      ctx.beginPath()
-      ctx.arc(dot.x * w, dot.y * h, dot.r, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(6, y); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(w, y); ctx.lineTo(w - 6, y); ctx.stroke()
     }
     ctx.restore()
   }, [breakpoint])
@@ -216,26 +189,21 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
   /* ─── RAF loop ─── */
   useEffect(() => {
     if (isMobile) return
-
-    const animate = () => {
-      // 1. Lerp rotation
+    const animate = (time: number) => {
       rotX.current += (targetRotX.current - rotX.current) * 0.08
       rotY.current += (targetRotY.current - rotY.current) * 0.08
 
-      // 2. Apply parallax transform with preserve-3d
       const textEl = containerRef.current?.querySelector<HTMLElement>('[data-parallax]')
       if (textEl) {
         textEl.style.transform = `perspective(800px) rotateX(${rotX.current}deg) rotateY(${rotY.current}deg)`
       }
 
-      // 3. Move label containers with subtle parallax
       labelContainerRefs.current.forEach((label, i) => {
         if (!label) return
-        const factor = (i + 1) * 0.15
-        label.style.transform = `translate(${rotY.current * factor}px, ${rotX.current * factor}px)`
+        const f = (i + 1) * 0.15
+        label.style.transform = `translate(${rotY.current * f}px, ${rotX.current * f}px)`
       })
 
-      // 4. Update label text via DOM refs
       if (mousePos.current.active) {
         const hv = hudValues.current
         if (labelXRef.current) labelXRef.current.textContent = `x: ${hv.x}`
@@ -244,12 +212,9 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
         if (labelAngleRef.current) labelAngleRef.current.textContent = `∠: ${hv.angle}°`
       }
 
-      // 5. Draw canvas HUD
-      drawCanvas()
-
+      drawCanvas(time)
       rafId.current = requestAnimationFrame(animate)
     }
-
     rafId.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(rafId.current)
   }, [isMobile, drawCanvas])
@@ -263,7 +228,6 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
 
       const rect = container.getBoundingClientRect()
       let clientX: number, clientY: number
-
       if ('touches' in e) {
         clientX = e.touches[0].clientX
         clientY = e.touches[0].clientY
@@ -274,30 +238,25 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
 
       const localX = clientX - rect.left
       const localY = clientY - rect.top
-      const normX = localX / rect.width  // 0 to 1
-      const normY = localY / rect.height // 0 to 1
-      const cx = normX - 0.5 // -0.5 to 0.5
+      const normX = localX / rect.width
+      const normY = localY / rect.height
+      const cx = normX - 0.5
       const cy = normY - 0.5
 
-      targetRotX.current = -cy * 16  // ±8 degrees
+      targetRotX.current = -cy * 16
       targetRotY.current = cx * 16
 
-      // Update mouse ref
-      mousePos.current.x = localX
-      mousePos.current.y = localY
-      mousePos.current.normX = normX
-      mousePos.current.normY = normY
-      mousePos.current.active = true
+      mousePos.current = { x: localX, y: localY, normX, normY, active: true }
 
-      // Update HUD values
       const distance = Math.sqrt(cx * cx + cy * cy) * 2
       const angleDeg = (Math.atan2(cy, cx) * 180) / Math.PI
-      hudValues.current.x = normX.toFixed(2)
-      hudValues.current.y = normY.toFixed(2)
-      hudValues.current.d = distance.toFixed(2)
-      hudValues.current.angle = angleDeg.toFixed(1)
+      hudValues.current = {
+        x: normX.toFixed(2),
+        y: normY.toFixed(2),
+        d: distance.toFixed(2),
+        angle: angleDeg.toFixed(1),
+      }
 
-      // Move crosshair
       if (crossRef.current) {
         crossRef.current.style.left = `${localX}px`
         crossRef.current.style.top = `${localY}px`
@@ -311,17 +270,7 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
     targetRotX.current = 0
     targetRotY.current = 0
     mousePos.current.active = false
-
-    if (crossRef.current) {
-      crossRef.current.style.opacity = '0'
-    }
-
-    // Clear canvas
-    const canvas = canvasRef.current
-    if (canvas) {
-      const ctx = canvas.getContext('2d')
-      if (ctx) ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight)
-    }
+    if (crossRef.current) crossRef.current.style.opacity = '0'
   }, [])
 
   /* ─── Render ─── */
@@ -329,14 +278,21 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
     <div
       ref={containerRef}
       className="relative h-[200px] sm:h-[280px] md:h-[380px] select-none"
-      style={{ background: '#0a0a0f' }}
+      style={{
+        background: '#0a0a0f',
+        backgroundImage: [
+          'linear-gradient(rgba(0,229,204,0.07) 1px, transparent 1px)',
+          'linear-gradient(90deg, rgba(0,229,204,0.07) 1px, transparent 1px)',
+          'linear-gradient(rgba(0,229,204,0.03) 1px, transparent 1px)',
+          'linear-gradient(90deg, rgba(0,229,204,0.03) 1px, transparent 1px)',
+        ].join(', '),
+        backgroundSize: '60px 60px, 60px 60px, 15px 15px, 15px 15px',
+      }}
       onMouseMove={handlePointerMove}
       onTouchMove={handlePointerMove}
       onMouseLeave={handlePointerLeave}
     >
-      {/* Overflow wrapper — separate from container so translateZ isn't clipped */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Corner brackets */}
         {!isMobile && (
           <>
             <Bracket position="top-left" />
@@ -346,7 +302,6 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
           </>
         )}
 
-        {/* Canvas 2D overlay */}
         {!isMobile && (
           <canvas
             ref={canvasRef}
@@ -354,54 +309,24 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
           />
         )}
 
-        {/* Crosshair (redesigned as real cross) */}
         {!isMobile && (
           <div
             ref={crossRef}
             className="pointer-events-none absolute z-20 opacity-0 transition-opacity duration-150"
             style={{ transform: 'translate(-50%, -50%)' }}
           >
-            {/* Vertical line */}
-            <div
-              className="absolute left-1/2 top-1/2"
-              style={{
-                width: 1,
-                height: 20,
-                background: 'rgba(0,229,204,0.6)',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
-            {/* Horizontal line */}
-            <div
-              className="absolute left-1/2 top-1/2"
-              style={{
-                width: 20,
-                height: 1,
-                background: 'rgba(0,229,204,0.6)',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
-            {/* Center dot */}
-            <div
-              className="absolute left-1/2 top-1/2 rounded-full"
-              style={{
-                width: 4,
-                height: 4,
-                background: '#00e5cc',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
+            <div className="absolute left-1/2 top-1/2" style={{ width: 1, height: 20, background: 'rgba(0,229,204,0.6)', transform: 'translate(-50%, -50%)' }} />
+            <div className="absolute left-1/2 top-1/2" style={{ width: 20, height: 1, background: 'rgba(0,229,204,0.6)', transform: 'translate(-50%, -50%)' }} />
+            <div className="absolute left-1/2 top-1/2 rounded-full" style={{ width: 4, height: 4, background: '#00e5cc', transform: 'translate(-50%, -50%)' }} />
           </div>
         )}
 
-        {/* Main text group */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-0">
           <div
             data-parallax
             className="will-change-transform text-center"
             style={{ transformStyle: 'preserve-3d' }}
           >
-            {/* Greeting line */}
             <p
               className="text-[0.85rem] sm:text-[1.2rem] md:text-[1.5rem] font-light tracking-wide"
               style={{ color: '#ccc' }}
@@ -409,14 +334,12 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
               Hola,
             </p>
 
-            {/* Wireframe 3D multilayer name */}
-            <WireframeLayers
+            <WireframeName
               text={nameUpper}
               fontClass={nameFontClass}
               layerCount={layerCount}
             />
 
-            {/* Subtitle */}
             <p
               className="text-[0.65rem] sm:text-[0.85rem] md:text-[1rem] font-light tracking-widest mt-1 sm:mt-2"
               style={{ color: '#888' }}
@@ -426,34 +349,13 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
           </div>
         </div>
 
-        {/* Floating HUD labels — dynamic, DOM-ref updated */}
         {!isMobile && (
           <>
-            <HudLabel
-              ref={(el) => { labelContainerRefs.current[0] = el }}
-              spanRef={labelXRef}
-              defaultText="x: 0.00"
-              className="top-6 left-6 sm:top-8 sm:left-8"
-            />
-            <HudLabel
-              ref={(el) => { labelContainerRefs.current[1] = el }}
-              spanRef={labelYRef}
-              defaultText="y: 0.00"
-              className="top-6 right-6 sm:top-8 sm:right-8"
-            />
-            <HudLabel
-              ref={(el) => { labelContainerRefs.current[2] = el }}
-              spanRef={labelDRef}
-              defaultText="d: 0.00"
-              className="bottom-6 left-6 sm:bottom-8 sm:left-8 hidden sm:block"
-            />
+            <HudLabel ref={(el) => { labelContainerRefs.current[0] = el }} spanRef={labelXRef} defaultText="x: 0.00" className="top-6 left-6 sm:top-8 sm:left-8" />
+            <HudLabel ref={(el) => { labelContainerRefs.current[1] = el }} spanRef={labelYRef} defaultText="y: 0.00" className="top-6 right-6 sm:top-8 sm:right-8" />
+            <HudLabel ref={(el) => { labelContainerRefs.current[2] = el }} spanRef={labelDRef} defaultText="d: 0.00" className="bottom-6 left-6 sm:bottom-8 sm:left-8 hidden sm:block" />
             {breakpoint === 'desktop' && (
-              <HudLabel
-                ref={(el) => { labelContainerRefs.current[3] = el }}
-                spanRef={labelAngleRef}
-                defaultText="∠: 0.0°"
-                className="bottom-6 right-6 sm:bottom-8 sm:right-8"
-              />
+              <HudLabel ref={(el) => { labelContainerRefs.current[3] = el }} spanRef={labelAngleRef} defaultText="∠: 0.0°" className="bottom-6 right-6 sm:bottom-8 sm:right-8" />
             )}
           </>
         )}
@@ -462,9 +364,9 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
   )
 }
 
-/* ─── Sub-components ─── */
+/* ─── SVG Wireframe Name — guaranteed no fill ─── */
 
-function WireframeLayers({
+function WireframeName({
   text,
   fontClass,
   layerCount,
@@ -475,32 +377,31 @@ function WireframeLayers({
 }) {
   const layers = []
   for (let i = layerCount - 1; i >= 0; i--) {
-    const t = i / (layerCount - 1 || 1) // 0 (front) to 1 (back)
-    const opacity = 1.0 - t * 0.88       // 1.0 → ~0.12
-
     const isFront = i === 0
-    const style: React.CSSProperties = {
-      position: i === 0 ? 'relative' : 'absolute',
-      inset: i === 0 ? undefined : 0,
-      color: isFront ? 'rgba(139,105,20,0.35)' : 'transparent',
-      WebkitTextStroke: `1.5px rgba(0,229,204,${opacity})`,
-      transform: `translateZ(${-i * 4}px)`,
-      textShadow: isFront
-        ? [
-            '0 0 2px rgba(0,229,204,0.9)',
-            '0 0 8px rgba(0,229,204,0.5)',
-            '0 0 20px rgba(0,229,204,0.25)',
-            '0 0 40px rgba(0,229,204,0.1)',
-          ].join(', ')
-        : 'none',
-    }
+    // Front: visible stroke. Back layers: ghost echoes, very faint
+    const opacity = isFront ? 0.85 : Math.max(0.04, 0.15 * (1 - i / layerCount))
+    const strokeW = isFront ? 1.2 : 0.4
 
     layers.push(
       <span
         key={i}
-        aria-hidden={i !== 0}
-        className={`${fontClass} font-extrabold leading-none tracking-tight block`}
-        style={style}
+        aria-hidden={!isFront}
+        className={`${fontClass} leading-none block font-[family-name:var(--font-nasalization)]`}
+        style={{
+          position: isFront ? 'relative' : 'absolute',
+          inset: isFront ? undefined : 0,
+          fontWeight: 400,
+          letterSpacing: '0.15em',
+          color: 'transparent',
+          caretColor: 'transparent',
+          WebkitTextFillColor: 'transparent',
+          WebkitTextStrokeWidth: `${strokeW}px`,
+          WebkitTextStrokeColor: `rgba(0,229,204,${opacity})`,
+          paintOrder: 'stroke fill markers',
+          transform: `translateZ(${-i * 8}px)`,
+          textShadow: 'none',
+          filter: isFront ? undefined : 'none',
+        }}
       >
         {text}
       </span>
@@ -508,16 +409,13 @@ function WireframeLayers({
   }
 
   return (
-    <div
-      className="relative"
-      style={{ transformStyle: 'preserve-3d' }}
-    >
+    <div className="relative" style={{ transformStyle: 'preserve-3d' }}>
       {layers}
     </div>
   )
 }
 
-import { forwardRef } from 'react'
+/* ─── HUD Label ─── */
 
 const HudLabel = forwardRef<
   HTMLDivElement,
@@ -549,46 +447,16 @@ const HudLabel = forwardRef<
   )
 })
 
-function Bracket({ position }: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }) {
-  const size = 24
-  const borderColor = 'rgba(0,229,204,0.3)'
-  const borderWidth = '1px'
+/* ─── Bracket ─── */
 
+function Bracket({ position }: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }) {
+  const bc = 'rgba(0,229,204,0.3)'
   const posMap: Record<string, React.CSSProperties> = {
-    'top-left': {
-      top: 12,
-      left: 12,
-      borderTop: `${borderWidth} solid ${borderColor}`,
-      borderLeft: `${borderWidth} solid ${borderColor}`,
-    },
-    'top-right': {
-      top: 12,
-      right: 12,
-      borderTop: `${borderWidth} solid ${borderColor}`,
-      borderRight: `${borderWidth} solid ${borderColor}`,
-    },
-    'bottom-left': {
-      bottom: 12,
-      left: 12,
-      borderBottom: `${borderWidth} solid ${borderColor}`,
-      borderLeft: `${borderWidth} solid ${borderColor}`,
-    },
-    'bottom-right': {
-      bottom: 12,
-      right: 12,
-      borderBottom: `${borderWidth} solid ${borderColor}`,
-      borderRight: `${borderWidth} solid ${borderColor}`,
-    },
+    'top-left':     { top: 12, left: 12, borderTop: `1px solid ${bc}`, borderLeft: `1px solid ${bc}` },
+    'top-right':    { top: 12, right: 12, borderTop: `1px solid ${bc}`, borderRight: `1px solid ${bc}` },
+    'bottom-left':  { bottom: 12, left: 12, borderBottom: `1px solid ${bc}`, borderLeft: `1px solid ${bc}` },
+    'bottom-right': { bottom: 12, right: 12, borderBottom: `1px solid ${bc}`, borderRight: `1px solid ${bc}` },
   }
 
-  return (
-    <div
-      className="pointer-events-none absolute"
-      style={{
-        width: size,
-        height: size,
-        ...posMap[position],
-      }}
-    />
-  )
+  return <div className="pointer-events-none absolute" style={{ width: 24, height: 24, ...posMap[position] }} />
 }
