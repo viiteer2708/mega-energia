@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, Users, Mail } from 'lucide-react'
+import { Search, Mail } from 'lucide-react'
 import type { BrevoCampaign } from '@/lib/brevo'
 
 interface EmailListProps {
@@ -72,10 +72,22 @@ export function EmailList({ campaigns }: EmailListProps) {
         <ul className="divide-y divide-border">
           {filtered.map((campaign) => (
             <li key={campaign.id}>
-              <div className="w-full text-left px-5 py-4 flex items-start gap-4">
+              <a
+                href={campaign.shareLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left px-5 py-4 flex items-start gap-4 hover:bg-muted/40 transition-colors block"
+              >
+                {/* Unread dot */}
+                <div className="shrink-0 pt-1.5 w-2">
+                  {!campaign.opened && (
+                    <span className="block h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
+
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground leading-snug truncate">
+                  <p className={`text-sm leading-snug truncate text-foreground ${campaign.opened ? 'font-medium' : 'font-semibold'}`}>
                     {campaign.subject}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1 truncate">
@@ -83,17 +95,13 @@ export function EmailList({ campaigns }: EmailListProps) {
                   </p>
                 </div>
 
-                {/* Meta */}
-                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                {/* Date */}
+                <div className="shrink-0">
                   <span className="text-xs text-muted-foreground">
                     {formatDateShort(campaign.sentDate)}
                   </span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    {campaign.recipients.toLocaleString('es-ES')}
-                  </span>
                 </div>
-              </div>
+              </a>
             </li>
           ))}
         </ul>

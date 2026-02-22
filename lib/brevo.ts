@@ -3,12 +3,14 @@ export interface BrevoCampaign {
   name: string
   subject: string
   sentDate: string
-  recipients: number
+  shareLink: string
+  opened: boolean
   tag: string
 }
 
 interface CampaignStat {
   sent: number
+  uniqueViews: number
 }
 
 interface BrevoApiCampaign {
@@ -16,6 +18,7 @@ interface BrevoApiCampaign {
   name: string
   subject: string
   sentDate: string
+  shareLink: string
   sender: { email?: string }
   statistics: { campaignStats: CampaignStat[] }
   tag: string
@@ -53,7 +56,8 @@ export async function getCampaigns(): Promise<BrevoCampaign[]> {
       name: c.name,
       subject: c.subject,
       sentDate: c.sentDate,
-      recipients: c.statistics?.campaignStats?.reduce((sum, s) => sum + s.sent, 0) ?? 0,
+      shareLink: c.shareLink ?? '',
+      opened: (c.statistics?.campaignStats?.reduce((sum, s) => sum + (s.uniqueViews ?? 0), 0) ?? 0) > 0,
       tag: c.tag,
     }))
   } catch {
