@@ -55,6 +55,7 @@ export function VentasChart({ data }: VentasChartProps) {
         </p>
       </CardHeader>
       <CardContent className="pt-0">
+        <div className="overflow-x-auto">
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -110,6 +111,7 @@ export function VentasChart({ data }: VentasChartProps) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   )

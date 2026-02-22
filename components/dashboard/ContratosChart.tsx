@@ -58,6 +58,7 @@ export function ContratosChart({ data }: ContratosChartProps) {
         </p>
       </CardHeader>
       <CardContent className="pt-0">
+        <div className="overflow-x-auto">
         <ResponsiveContainer width="100%" height={220}>
           <BarChart
             data={data}
@@ -97,6 +98,7 @@ export function ContratosChart({ data }: ContratosChartProps) {
             />
           </BarChart>
         </ResponsiveContainer>
+        </div>
         <div className="mt-2 flex items-center gap-4 justify-center">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="h-2 w-4 rounded-sm bg-[oklch(0.30_0_0)]" />

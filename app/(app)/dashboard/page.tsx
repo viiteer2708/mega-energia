@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import {
   FileText,
   Zap,
@@ -19,22 +20,19 @@ import {
   mockRanking,
 } from '@/lib/mock-data'
 
-// Mock user — se reemplazará con datos reales de Supabase
-const mockUser = {
-  full_name: 'Carlos García',
-  role: 'COMERCIAL' as const,
-}
+export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  const raw = cookieStore.get('mega-session')?.value
+  const session = raw
+    ? (JSON.parse(raw) as { email: string; name: string; role: string })
+    : { email: '', name: 'Usuario', role: 'COMERCIAL' }
 
-export default function DashboardPage() {
   const kpis = mockKPIs
 
   return (
     <div className="space-y-6 max-w-[1400px]">
-      {/* Header con nombre 3D */}
-      <DashboardHeader
-        userName={mockUser.full_name.split(' ')[0]}
-        subtitle={`Panel comercial · Febrero 2026`}
-      />
+      {/* Header con nombre HUD/wireframe */}
+      <DashboardHeader userName={session.name} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -88,7 +86,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <RankingCard
           data={mockRanking}
-          currentUserName={mockUser.full_name}
+          currentUserName={session.name}
         />
         <ActivityFeed actividades={mockActividades} />
       </div>
