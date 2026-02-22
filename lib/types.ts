@@ -166,7 +166,7 @@ export interface ComparadorInputData {
   consumo_p1_pct: number   // % consumo en P1
   consumo_p2_pct: number   // % consumo en P2
   consumo_p3_pct: number   // % consumo en P3
-  potencia_kw: number
+  potencias: { periodo: string; potencia: number }[]
   tarifa_actual: string
   precio_actual_kwh: number // precio medio actual €/kWh
 }

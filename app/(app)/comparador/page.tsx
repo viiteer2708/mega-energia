@@ -11,6 +11,11 @@ import type { ComparadorInputData, ResultadoTarifa } from '@/lib/types'
 function calcularResultados(input: ComparadorInputData): ResultadoTarifa[] {
   const tipoFiltro = input.tipo === 'dual' ? ['electricidad', 'gas'] : [input.tipo]
 
+  // Total potencia contratada para el término de potencia (sum of all periods)
+  const potenciaTotal = input.potencias.reduce((s, p) => s + p.potencia, 0)
+  // P1 for reference
+  const potenciaP1 = input.potencias.find(p => p.periodo === 'P1')?.potencia ?? potenciaTotal
+
   return tarifasComparador
     .filter(t => tipoFiltro.includes(t.tipo))
     .map(tarifa => {
@@ -23,12 +28,13 @@ function calcularResultados(input: ComparadorInputData): ResultadoTarifa[] {
         + p2 * (tarifa.precio_p2 ?? tarifa.precio_p1)
         + p3 * (tarifa.precio_p3 ?? tarifa.precio_p1)
 
-      const coste_potencia = input.potencia_kw * tarifa.potencia_anual
+      // Use P1 power for potencia billing (mock rates are per-period equivalent)
+      const coste_potencia = potenciaP1 * tarifa.potencia_anual
       const coste_fijo = tarifa.cuota_fija * 12
       const coste_total = coste_energia + coste_potencia + coste_fijo
 
       const coste_actual = input.consumo_anual_kwh * input.precio_actual_kwh
-        + input.potencia_kw * 40
+        + potenciaP1 * 40
 
       return {
         tarifa,
@@ -50,14 +56,16 @@ export default function ComparadorPage() {
     setLoading(true)
     await new Promise(r => setTimeout(r, 600))
     const res = calcularResultados(data)
-    const actual = data.consumo_anual_kwh * data.precio_actual_kwh + data.potencia_kw * 40
+    const potenciaP1 = data.potencias.find(p => p.periodo === 'P1')?.potencia
+      ?? data.potencias[0]?.potencia ?? 0
+    const actual = data.consumo_anual_kwh * data.precio_actual_kwh + potenciaP1 * 40
     setCosteActual(actual)
     setResultados(res)
     setLoading(false)
   }
 
   return (
-    <div className="space-y-6 max-w-[1100px]">
+    <div className="space-y-6 max-w-[1200px]">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
           <GitCompare className="h-5 w-5 text-primary" />
@@ -70,7 +78,7 @@ export default function ComparadorPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[480px_1fr] lg:grid-cols-[420px_1fr]">
         <ComparadorForm onComparar={handleComparar} loading={loading} />
 
         {resultados ? (
