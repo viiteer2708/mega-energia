@@ -83,25 +83,21 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
         )}
       >
         {collapsed ? (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white border border-border/30 overflow-hidden">
-            <Image
-              src="/logo.jpg"
-              alt="MEGA ENERGÍA"
-              width={36}
-              height={36}
-              className="object-contain"
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="MEGA ENERGÍA"
+            width={36}
+            height={36}
+            className="object-contain shrink-0"
+          />
         ) : (
-          <div className="flex h-10 items-center rounded-lg bg-white border border-border/30 overflow-hidden px-2">
-            <Image
-              src="/logo.jpg"
-              alt="MEGA ENERGÍA"
-              width={140}
-              height={40}
-              className="object-contain"
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="MEGA ENERGÍA"
+            width={140}
+            height={40}
+            className="object-contain"
+          />
         )}
       </div>
 
