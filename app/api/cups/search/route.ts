@@ -6,6 +6,42 @@ import crypto from 'crypto'
 
 const API_BASE = 'https://api.greeningenergy.com'
 
+// ── ATR tariff code → friendly name ──────────────────────────────────────────
+
+const ATR_MAP: Record<string, string> = {
+  '018': '2.0TD',
+  '019': '3.0TD',
+  '011': 'RL.1',
+  '012': 'RL.2',
+  '013': 'RL.3',
+  '014': 'RL.4',
+  '015': 'RL.5',
+  '016': 'RL.6',
+  '003': '3.0A',
+  '004': '3.1A',
+  '006': '6.1',
+  '007': '6.2',
+  '008': '6.3',
+  '009': '6.4',
+  '010': '6.5',
+}
+
+// TipoTarifa enum (from /info endpoint) → friendly name
+const TIPO_TARIFA_MAP: Record<number, string> = {
+  202020: '2.0TD',
+  202030: '3.0TD',
+  202061: '6.1TD',
+  202062: '6.2TD',
+  202063: '6.3TD',
+  202064: '6.4TD',
+}
+
+function mapTarifa(atrCode: string | null, tipoTarifa?: number | null): string | null {
+  if (atrCode) return ATR_MAP[atrCode] ?? atrCode
+  if (tipoTarifa) return TIPO_TARIFA_MAP[tipoTarifa] ?? null
+  return null
+}
+
 // ── Decryption (only used when API returns x-iv header) ───────────────────
 
 function decrypt(buf: Buffer, ivB64: string): string {
@@ -39,15 +75,12 @@ async function apiGet(path: string): Promise<unknown> {
   let text: string
 
   if (iv) {
-    // API returned encrypted response — decrypt
     try {
       text = decrypt(buf, iv)
     } catch {
-      // Fallback: try as plain text
       text = buf.toString('utf8')
     }
   } else {
-    // No encryption — plain JSON
     text = buf.toString('utf8')
   }
 
@@ -82,26 +115,59 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Fetch raw SIPS data + 12-month consumption in parallel
-    const [rawData, consumoData] = await Promise.all([
+    // Fetch SIPS info + raw + monthly consumption in parallel
+    const [infoData, rawData, consumoData] = await Promise.all([
+      apiGet(`/api/public/sips/info?cups=${encodeURIComponent(cups)}`),
       apiGet(`/api/public/sips/info/raw?cups=${encodeURIComponent(cups)}`),
       apiGet(`/api/public/sips/info/consumo?cups=${encodeURIComponent(cups)}`),
     ])
 
-    // ── Parse ClientesSips[0] ──────────────────────────────────────────
-    const raw = rawData as Obj
-    const cliente = (raw?.ClientesSips as Obj[] | null)?.[0] ?? {} as Obj
+    // ── Parse /info (CupsInfo) ─────────────────────────────────────────
+    const info = infoData as Obj
 
-    const tarifa = str(cliente.CodigoTarifaATREnVigor)
-
-    // Potencias in Watts → convert to kW
+    // Potencias — already in kW in the /info endpoint
+    const potContratada = info?.PotenciaContratada as Obj | null
     const potencias: { periodo: string; potencia: number }[] = []
-    for (let i = 1; i <= 6; i++) {
-      const wVal = num(cliente[`PotenciasContratadasEnWP${i}`])
-      if (wVal !== null) potencias.push({ periodo: `P${i}`, potencia: wVal / 1000 })
+    for (const p of ['P1','P2','P3','P4','P5','P6'] as const) {
+      const v = num(potContratada?.[p])
+      if (v !== null) potencias.push({ periodo: p, potencia: v })
     }
 
-    // Titular: try full name field, then concatenate parts
+    // Tarifa — from /info TipoTarifa enum, fallback to raw ATR code
+    const raw = rawData as Obj
+    const cliente = (raw?.ClientesSips as Obj[] | null)?.[0] ?? {} as Obj
+    const atrCode = str(cliente.CodigoTarifaATREnVigor)
+    const tipoTarifa = typeof info.TipoTarifa === 'number' ? info.TipoTarifa : null
+    const tarifa = mapTarifa(atrCode, tipoTarifa)
+
+    // Consumo anual — from ConsumoPeriodos (sum), fallback to ConsumoEstimado
+    const consumoPeriodos = info?.ConsumoPeriodos as Obj | null
+    let consumoAnualInfo = 0
+    if (consumoPeriodos) {
+      for (const p of ['P1','P2','P3','P4','P5','P6']) {
+        consumoAnualInfo += num(consumoPeriodos[p]) ?? 0
+      }
+    }
+    if (!consumoAnualInfo) consumoAnualInfo = num(info.ConsumoEstimado) ?? 0
+
+    // ── Parse ClientesSips[0] (from /raw) for geo + distribuidora ─────
+    const municipio    = str(cliente.DesMunicipioPS)  ?? str(cliente.MunicipioPS)
+    const provincia    = str(cliente.DesProvinciaPS)  ?? str(cliente.CodigoProvinciaPS)
+    const cp           = str(cliente.CodigoPostalPS)
+    const distribuidora = str(cliente.NombreEmpresaDistribuidora)
+    const ultimaLectura = str(cliente.FechaUltimaLectura)
+    const tipoMedida   = str(cliente.CodigoTelegestion)
+
+    // Build address string from raw parts
+    const tipoVia  = str(cliente.TipoViaPS)
+    const via      = str(cliente.ViaPS)
+    const numFinca = str(cliente.NumFincaPS)
+    const piso     = str(cliente.PisoPS)
+    const puerta   = str(cliente.PuertaPS)
+    const direccion = [tipoVia, via, numFinca, piso, puerta].filter(Boolean).join(' ') || null
+
+    // NIF + titular (rarely returned by public SIPS)
+    const nif    = str(cliente.IdTitular)
     const nombreCompleto = str(cliente.NombreCompletoTitular)
     const titularParts = [
       str(cliente.NombreTitular),
@@ -110,27 +176,7 @@ export async function GET(req: NextRequest) {
     ].filter(Boolean).join(' ')
     const titular = nombreCompleto ?? (titularParts || null)
 
-    // Address
-    const municipio  = str(cliente.DesMunicipioPS)  ?? str(cliente.MunicipioPS)
-    const provincia  = str(cliente.DesProvinciaPS)  ?? str(cliente.CodigoProvinciaPS)
-    const cp         = str(cliente.CodigoPostalPS)
-    const distribuidora = str(cliente.NombreEmpresaDistribuidora)
-    const ultimaLectura = str(cliente.FechaUltimaLectura)
-    const tipoMedida = str(cliente.CodigoTelegestion)  // non-empty → telegestionado
-
-    // Build address string from parts
-    const tipoVia  = str(cliente.TipoViaPS)
-    const via      = str(cliente.ViaPS)
-    const numFinca = str(cliente.NumFincaPS)
-    const piso     = str(cliente.PisoPS)
-    const puerta   = str(cliente.PuertaPS)
-    const direccion = [tipoVia, via, numFinca, piso, puerta].filter(Boolean).join(' ') || null
-
-    // NIF
-    const nif = str(cliente.IdTitular)
-
-    // ── Parse CupsConsumo[] ────────────────────────────────────────────
-    // Schema: [{Fecha: "2025-01T...", P1: kWh, P2: kWh, ...}]
+    // ── Parse CupsConsumo[] for monthly breakdown ──────────────────────
     const MES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const consumoMensual: { mes: string; kwh: number }[] = []
 
@@ -141,7 +187,6 @@ export async function GET(req: NextRequest) {
           ? MES_ES[new Date(fecha).getMonth()]
           : undefined
 
-        // Sum all periods for total monthly kWh
         let kwh = 0
         for (let i = 1; i <= 6; i++) {
           kwh += num(row[`P${i}`]) ?? 0
@@ -150,7 +195,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const consumoAnual = consumoMensual.reduce((s, r) => s + r.kwh, 0) || null
+    // Monthly sum as fallback consumo anual
+    const consumoMensualSum = consumoMensual.reduce((s, r) => s + r.kwh, 0)
+    const consumoAnual = consumoMensualSum || consumoAnualInfo || null
 
     return NextResponse.json({
       cups,
