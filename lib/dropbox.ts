@@ -68,7 +68,7 @@ async function dbPost(endpoint: string, body: object) {
 
 // ── Folder listing ────────────────────────────────────────────────────────────
 
-async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; subfolders: { id: string; name: string }[] }> {
+export async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; subfolders: { id: string; name: string }[] }> {
   const data = await dbPost('/files/list_folder', { path: pathOrId })
   if (!data?.entries) return { files: [], subfolders: [] }
 
