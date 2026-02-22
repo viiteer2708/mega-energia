@@ -1,9 +1,10 @@
-import { Mail } from 'lucide-react'
-import { EmailStatCards } from '@/components/emails/EmailStatCards'
+import { Mail, Send } from 'lucide-react'
+import { getCampaigns } from '@/lib/brevo'
 import { EmailList } from '@/components/emails/EmailList'
-import { mockComunicados, mockEmailStats } from '@/lib/mock-data'
 
-export default function EmailsPage() {
+export default async function EmailsPage() {
+  const campaigns = await getCampaigns()
+
   return (
     <div className="space-y-6 max-w-[1200px]">
       {/* Page header */}
@@ -12,18 +13,30 @@ export default function EmailsPage() {
           <Mail className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">Comunicados</h1>
+          <h1 className="text-xl font-bold text-foreground">Campañas</h1>
           <p className="text-sm text-muted-foreground">
-            Histórico de emails enviados a clientes
+            Histórico de campañas de email enviadas desde Brevo
           </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <EmailStatCards stats={mockEmailStats} />
+      {/* Stat card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-border/50 bg-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+              <Send className="h-4 w-4 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{campaigns.length}</p>
+              <p className="text-xs text-muted-foreground">Campañas enviadas</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* List */}
-      <EmailList comunicados={mockComunicados} />
+      <EmailList campaigns={campaigns} />
     </div>
   )
 }

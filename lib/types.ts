@@ -103,44 +103,6 @@ export interface CUPSBusquedaReciente {
   fecha: string
 }
 
-// ── Emails ──────────────────────────────────────────────────────────────────
-
-export type EmailTipo =
-  | 'propuesta'
-  | 'seguimiento'
-  | 'bienvenida'
-  | 'renovacion'
-  | 'informativo'
-  | 'promocion'
-
-export type EmailEstado = 'enviado' | 'abierto' | 'respondido' | 'rebotado'
-
-export interface EmailDestinatario {
-  nombre: string
-  email: string
-  empresa?: string
-}
-
-export interface Comunicado {
-  id: string
-  asunto: string
-  tipo: EmailTipo
-  estado: EmailEstado
-  destinatarios: EmailDestinatario[]
-  fecha_envio: string
-  fecha_apertura?: string
-  cuerpo: string
-  adjuntos?: string[]
-}
-
-export interface EmailStats {
-  total_enviados: number
-  tasa_apertura: number
-  tasa_respuesta: number
-  rebotados: number
-}
-
-
 // ── Comparador ────────────────────────────────────────────────────────────────────────────
 
 export type TipoSuministroComp = 'electricidad' | 'gas' | 'dual'
