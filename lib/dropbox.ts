@@ -91,7 +91,7 @@ async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; subfolde
 const SHARED_LINK = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrm6dg7hsxknyw8&dl=0'
 
 const MAIN_FOLDERS: { id: string; name: string }[] = [
-  { id: 'id:6sQNZb27aFAAAAAAAAACPg', name: 'INSTRUCCIONES Y TUTORIALES' },
+  { id: 'id:6sQNZb27aFAAAAAAAAACPg', name: 'INSTRUCIONES & TUTORIALES' },
   { id: 'id:6sQNZb27aFAAAAAAAAAcHg', name: 'LUZ' },
   { id: 'id:6sQNZb27aFAAAAAAAACIXg', name: 'GAS' },
   { id: 'id:6sQNZb27aFAAAAAAAABXUg', name: 'PLATAFORMA ADMINISTRADORES DE FINCAS' },
