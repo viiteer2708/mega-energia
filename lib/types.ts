@@ -12,10 +12,10 @@ export interface UserProfile {
 export interface KPIData {
   contratos_mes: number
   contratos_variacion: number
-  potencia_total: number
+  consumo_total_luz: number
   facturacion: number
-  tasa_conversion: number
-  ranking: number
+  consumo_total_gas: number
+  wallet: number
 }
 
 export interface ContratoMensual {

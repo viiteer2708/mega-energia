@@ -17,10 +17,10 @@ import type {
 export const mockKPIs: KPIData = {
   contratos_mes: 23,
   contratos_variacion: 15.4,
-  potencia_total: 847.5,
+  consumo_total_luz: 103220,
   facturacion: 48320,
-  tasa_conversion: 34.7,
-  ranking: 3,
+  consumo_total_gas: 52000,
+  wallet: (103220 + 52000) * 0.5,
 }
 
 export const mockVentasMensuales: ContratoMensual[] = [

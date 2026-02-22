@@ -3,8 +3,8 @@ import {
   FileText,
   Zap,
   Euro,
-  TrendingUp,
-  Award,
+  Flame,
+  Wallet,
 } from 'lucide-react'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { KPICard } from '@/components/dashboard/KPICard'
@@ -45,11 +45,18 @@ export default async function DashboardPage() {
           subtitle="contratos firmados"
         />
         <KPICard
-          title="Potencia contratada"
-          value={`${kpis.potencia_total.toLocaleString('es-ES')} kW`}
+          title="Consumo total luz"
+          value={`${kpis.consumo_total_luz.toLocaleString('es-ES')} kWh`}
           icon={Zap}
           accentColor="blue"
-          subtitle="potencia total"
+          subtitle="consumo acumulado"
+        />
+        <KPICard
+          title="Consumo total gas"
+          value={`${kpis.consumo_total_gas.toLocaleString('es-ES')} kWh`}
+          icon={Flame}
+          accentColor="orange"
+          subtitle="consumo acumulado"
         />
         <KPICard
           title="Facturación generada"
@@ -60,19 +67,11 @@ export default async function DashboardPage() {
           subtitle="ingresos del mes"
         />
         <KPICard
-          title="Tasa de conversión"
-          value={`${kpis.tasa_conversion}%`}
-          variacion={2.1}
-          icon={TrendingUp}
+          title="Wallet"
+          value={`${kpis.wallet.toLocaleString('es-ES')} €`}
+          icon={Wallet}
           accentColor="purple"
-          subtitle="de leads a contratos"
-        />
-        <KPICard
-          title="Ranking en la red"
-          value={`#${kpis.ranking}`}
-          icon={Award}
-          accentColor="teal"
-          subtitle="de 18 comerciales"
+          subtitle="(luz + gas) × 0,5"
         />
       </div>
 

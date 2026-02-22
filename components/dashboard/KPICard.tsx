@@ -7,7 +7,7 @@ interface KPICardProps {
   value: string
   variacion?: number
   icon: LucideIcon
-  accentColor?: 'teal' | 'blue' | 'green' | 'purple' | 'red'
+  accentColor?: 'teal' | 'blue' | 'green' | 'purple' | 'red' | 'orange'
   subtitle?: string
 }
 
@@ -41,6 +41,12 @@ const accentStyles = {
     iconBg: 'bg-red-500/10 border-red-500/20',
     glow: 'shadow-red-500/10',
     trend: 'text-red-400',
+  },
+  orange: {
+    icon: 'text-orange-400',
+    iconBg: 'bg-orange-500/10 border-orange-500/20',
+    glow: 'shadow-orange-500/10',
+    trend: 'text-orange-400',
   },
 }
 
