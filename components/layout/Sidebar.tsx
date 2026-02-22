@@ -147,34 +147,41 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
           collapsed && 'justify-center px-2'
         )}
       >
-        <Avatar className="h-8 w-8 shrink-0 border border-border">
-          <AvatarImage src={user?.avatar_url} />
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        {!collapsed && (
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-medium text-foreground">
-              {user?.full_name ?? 'Comercial'}
-            </span>
-            <Badge
-              variant="outline"
-              className={cn(
-                'mt-0.5 w-fit px-1.5 py-0 text-[10px] font-semibold',
-                roleColors[user?.role ?? 'COMERCIAL']
-              )}
-            >
-              {user?.role ?? 'COMERCIAL'}
-            </Badge>
-          </div>
-        )}
+        <Link
+          href="/perfil"
+          className={cn(
+            'flex items-center gap-3 rounded-lg transition-colors hover:bg-accent min-w-0',
+            collapsed ? 'p-0' : 'flex-1 px-1 py-1'
+          )}
+        >
+          <Avatar className="h-8 w-8 shrink-0 border border-border">
+            <AvatarImage src={user?.avatar_url} />
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-medium text-foreground">
+                {user?.full_name ?? 'Comercial'}
+              </span>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'mt-0.5 w-fit px-1.5 py-0 text-[10px] font-semibold',
+                  roleColors[user?.role ?? 'COMERCIAL']
+                )}
+              >
+                {user?.role ?? 'COMERCIAL'}
+              </Badge>
+            </div>
+          )}
+        </Link>
         {!collapsed && (
           <button
             className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
             title="Cerrar sesión"
             onClick={() => {
-              // Supabase signout — se conectará cuando tengamos auth
               window.location.href = '/login'
             }}
           >

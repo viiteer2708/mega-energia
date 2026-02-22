@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Menu } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -58,7 +59,10 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
       </div>
 
       {/* User info */}
-      <div className="flex items-center gap-3">
+      <Link
+        href="/perfil"
+        className="flex items-center gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-accent"
+      >
         <div className="hidden sm:flex flex-col items-end">
           <span className="text-sm font-medium text-foreground">
             {user?.full_name ?? 'Comercial'}
@@ -79,7 +83,7 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
             {initials}
           </AvatarFallback>
         </Avatar>
-      </div>
+      </Link>
     </header>
   )
 }
