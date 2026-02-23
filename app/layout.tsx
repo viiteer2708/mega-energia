@@ -20,8 +20,8 @@ const nasalization = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'MEGA ENERGÍA — Panel Comercial',
-  description: 'Plataforma de gestión para comerciales de MEGA ENERGÍA',
+  title: 'GRUPO NEW ENERGY — Panel Comercial',
+  description: 'Plataforma de gestión para comerciales de GRUPO NEW ENERGY',
 }
 
 export default function RootLayout({

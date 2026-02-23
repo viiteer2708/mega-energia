@@ -46,7 +46,7 @@ export async function getCampaigns(): Promise<BrevoCampaign[]> {
 
     const data: BrevoApiResponse = await res.json()
 
-    const SENDER_EMAIL = 'victormarron@megaenergia.es'
+    const SENDER_EMAIL = 'victormarron@gruponewenergy.es'
     const filtered = data.campaigns.filter(
       (c) => c.sender?.email?.toLowerCase() === SENDER_EMAIL
     )

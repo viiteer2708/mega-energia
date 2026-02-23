@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const session = request.cookies.get('mega-session')?.value
+  const session = request.cookies.get('gne-session')?.value
 
   const isPublicRoute = pathname.startsWith('/login')
 

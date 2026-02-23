@@ -9,12 +9,12 @@ export default async function AppLayout({
   children: React.ReactNode
 }) {
   const cookieStore = await cookies()
-  const raw = cookieStore.get('mega-session')?.value
+  const raw = cookieStore.get('gne-session')?.value
 
   // Fallback — middleware ya redirige si no hay sesión
   const session = raw
     ? (JSON.parse(raw) as { email: string; name: string; role: string })
-    : { email: 'comercial@megaenergia.es', name: 'Comercial', role: 'COMERCIAL' }
+    : { email: 'comercial@gruponewenergy.es', name: 'Comercial', role: 'COMERCIAL' }
 
   const user: UserProfile = {
     id: Buffer.from(session.email).toString('base64url'),

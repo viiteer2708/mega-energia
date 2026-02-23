@@ -22,7 +22,7 @@ import {
 
 export default async function DashboardPage() {
   const cookieStore = await cookies()
-  const raw = cookieStore.get('mega-session')?.value
+  const raw = cookieStore.get('gne-session')?.value
   const session = raw
     ? (JSON.parse(raw) as { email: string; name: string; role: string })
     : { email: '', name: 'Usuario', role: 'COMERCIAL' }

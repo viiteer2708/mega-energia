@@ -114,9 +114,9 @@ export function ClienteList({ clientes }: ClienteListProps) {
                     )}>
                       {cfg.label}
                     </span>
-                    {cliente.contratos_mega > 0 && (
+                    {cliente.contratos_gne > 0 && (
                       <span className="text-[10px] text-muted-foreground">
-                        {cliente.contratos_mega} contrato{cliente.contratos_mega !== 1 ? 's' : ''} MEGA
+                        {cliente.contratos_gne} contrato{cliente.contratos_gne !== 1 ? 's' : ''} GNE
                       </span>
                     )}
                   </div>

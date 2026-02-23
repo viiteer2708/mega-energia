@@ -4,7 +4,7 @@ import { ProfileForm } from './ProfileForm'
 
 export default async function PerfilPage() {
   const cookieStore = await cookies()
-  const raw = cookieStore.get('mega-session')?.value
+  const raw = cookieStore.get('gne-session')?.value
 
   if (!raw) {
     redirect('/login')

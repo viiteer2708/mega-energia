@@ -17,14 +17,14 @@ export function ComparadorResultados({ resultados, costeActual }: ComparadorResu
   return (
     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Resumen ahorro */}
-      {mejor.tarifa.es_mega && (
+      {mejor.tarifa.es_gne && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-500/30">
             <Trophy className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
             <p className="text-sm font-semibold text-emerald-400">
-              MEGA ENERGÍA ofrece la mejor tarifa
+              GRUPO NEW ENERGY ofrece la mejor tarifa
             </p>
             <p className="text-xs text-emerald-400/70">
               El cliente ahorra{' '}
@@ -51,7 +51,7 @@ export function ComparadorResultados({ resultados, costeActual }: ComparadorResu
               key={r.tarifa.id}
               className={cn(
                 'border transition-all',
-                r.tarifa.es_mega
+                r.tarifa.es_gne
                   ? 'border-primary/30 bg-primary/5'
                   : 'border-border/50 bg-card',
                 isBest && 'ring-1 ring-primary/30'
@@ -70,12 +70,12 @@ export function ComparadorResultados({ resultados, costeActual }: ComparadorResu
                   {/* Info tarifa */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={cn('text-sm font-semibold', r.tarifa.es_mega ? 'text-primary' : 'text-foreground')}>
+                      <span className={cn('text-sm font-semibold', r.tarifa.es_gne ? 'text-primary' : 'text-foreground')}>
                         {r.tarifa.comercializadora}
                       </span>
-                      {r.tarifa.es_mega && (
+                      {r.tarifa.es_gne && (
                         <span className="rounded px-1.5 py-0.5 bg-primary/20 text-[10px] font-bold text-primary">
-                          MEGA ENERGÍA
+                          GRUPO NEW ENERGY
                         </span>
                       )}
                       {isBest && (

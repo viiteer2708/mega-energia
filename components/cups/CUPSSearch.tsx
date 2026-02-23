@@ -31,7 +31,7 @@ export function CUPSSearch({ onSearch, loading, error }: CUPSSearchProps) {
         Consultar punto de suministro
       </h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Introduce el código CUPS para obtener los datos del suministro y el ahorro potencial con MEGA ENERGÍA.
+        Introduce el código CUPS para obtener los datos del suministro y el ahorro potencial con GRUPO NEW ENERGY.
       </p>
 
       <form onSubmit={handleSubmit} className="flex gap-3">

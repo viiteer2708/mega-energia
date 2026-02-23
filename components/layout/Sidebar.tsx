@@ -85,7 +85,7 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
         {collapsed ? (
           <Image
             src="/logo.png"
-            alt="MEGA ENERGÍA"
+            alt="GRUPO NEW ENERGY"
             width={36}
             height={36}
             className="object-contain shrink-0"
@@ -93,7 +93,7 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
         ) : (
           <Image
             src="/logo.png"
-            alt="MEGA ENERGÍA"
+            alt="GRUPO NEW ENERGY"
             width={140}
             height={40}
             className="object-contain"
@@ -116,7 +116,7 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                     collapsed && 'justify-center px-2',
                     isActive
-                      ? 'bg-primary/15 text-primary border border-primary/20 mega-card-glow'
+                      ? 'bg-primary/15 text-primary border border-primary/20 gne-card-glow'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                   title={collapsed ? label : undefined}

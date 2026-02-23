@@ -42,7 +42,7 @@ export default function LoginPage() {
           <div className="flex items-center justify-center rounded-2xl bg-white border border-border/30 shadow-lg px-6 py-3">
             <Image
               src="/logo.jpg"
-              alt="MEGA ENERGÍA"
+              alt="GRUPO NEW ENERGY"
               width={200}
               height={60}
               className="object-contain"
@@ -78,7 +78,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   required
                   className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-colors"
-                  placeholder="tu@megaenergia.es"
+                  placeholder="tu@gruponewenergy.es"
                 />
               </div>
 
@@ -144,7 +144,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Acceso exclusivo para comerciales de MEGA ENERGÍA.
+          Acceso exclusivo para comerciales de GRUPO NEW ENERGY.
           <br />
           Si tienes problemas, contacta con soporte.
         </p>

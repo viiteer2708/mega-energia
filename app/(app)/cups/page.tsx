@@ -7,11 +7,11 @@ import { CUPSResult } from '@/components/cups/CUPSResult'
 import { CUPSRecientes } from '@/components/cups/CUPSRecientes'
 import type { PuntoSuministro, CUPSBusquedaReciente } from '@/lib/types'
 
-// ── MEGA reference prices per tariff ──────────────────────────────────────
+// ── GNE reference prices per tariff ──────────────────────────────────────
 
 import type { PeriodoTarifa } from '@/lib/types'
 
-const MEGA_PRECIOS: Record<string, { periodo: PeriodoTarifa; precio: number }[]> = {
+const GNE_PRECIOS: Record<string, { periodo: PeriodoTarifa; precio: number }[]> = {
   '2.0TD':  [{ periodo: 'P1', precio: 0.128 }, { periodo: 'P2', precio: 0.094 }, { periodo: 'P3', precio: 0.062 }],
   '3.0TD':  [{ periodo: 'P1', precio: 0.142 }, { periodo: 'P2', precio: 0.098 }, { periodo: 'P3', precio: 0.068 },
              { periodo: 'P4', precio: 0.058 }, { periodo: 'P5', precio: 0.052 }, { periodo: 'P6', precio: 0.048 }],
@@ -20,10 +20,10 @@ const MEGA_PRECIOS: Record<string, { periodo: PeriodoTarifa; precio: number }[]>
   'default':[{ periodo: 'P1', precio: 0.120 }],
 }
 
-function getMegaPrecios(tarifa: string | null) {
-  if (!tarifa) return MEGA_PRECIOS['default']
-  const key = Object.keys(MEGA_PRECIOS).find(k => k !== 'default' && tarifa.toUpperCase().includes(k))
-  return key ? MEGA_PRECIOS[key] : MEGA_PRECIOS['default']
+function getGnePrecios(tarifa: string | null) {
+  if (!tarifa) return GNE_PRECIOS['default']
+  const key = Object.keys(GNE_PRECIOS).find(k => k !== 'default' && tarifa.toUpperCase().includes(k))
+  return key ? GNE_PRECIOS[key] : GNE_PRECIOS['default']
 }
 
 function inferTipo(tarifa: string | null): 'electricidad' | 'gas' {
@@ -31,9 +31,9 @@ function inferTipo(tarifa: string | null): 'electricidad' | 'gas' {
   return /^RL|^G[0-9]|gas/i.test(tarifa) ? 'gas' : 'electricidad'
 }
 
-function calcAhorro(consumoAnual: number, megaPrecios: { precio: number }[]): number {
-  const avgMega = megaPrecios.reduce((s, p) => s + p.precio, 0) / megaPrecios.length
-  return Math.round(Math.max(0, (0.19 - avgMega) * consumoAnual))
+function calcAhorro(consumoAnual: number, gnePrecios: { precio: number }[]): number {
+  const avgGne = gnePrecios.reduce((s, p) => s + p.precio, 0) / gnePrecios.length
+  return Math.round(Math.max(0, (0.19 - avgGne) * consumoAnual))
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -60,9 +60,9 @@ export default function CUPSPage() {
 
       const tarifa       = data.tarifa ?? 'No disponible'
       const tipo         = inferTipo(data.tarifa)
-      const megaPrecios  = getMegaPrecios(data.tarifa)
+      const gnePrecios  = getGnePrecios(data.tarifa)
       const consumoAnual = data.consumoAnual ?? 0
-      const ahorro       = consumoAnual ? calcAhorro(consumoAnual, megaPrecios) : 0
+      const ahorro       = consumoAnual ? calcAhorro(consumoAnual, gnePrecios) : 0
 
       const potencias = ((data.potencias ?? []) as { periodo: string; potencia: number }[]).map(p => ({
         periodo: p.periodo as 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6',
@@ -87,8 +87,8 @@ export default function CUPSPage() {
         consumo_mensual:         data.consumoMensual ?? [],
         ultima_lectura:          new Date().toISOString().split('T')[0],
         ahorro_estimado_anual:   ahorro,
-        tarifa_mega_recomendada: tipo === 'gas' ? `Gas MEGA ${tarifa}` : `MEGA ${tarifa}`,
-        precios_mega:            megaPrecios,
+        tarifa_gne_recomendada: tipo === 'gas' ? `Gas GNE ${tarifa}` : `GNE ${tarifa}`,
+        precios_gne:            gnePrecios,
       }
 
       setResultado(punto)

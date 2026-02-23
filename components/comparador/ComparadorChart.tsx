@@ -26,11 +26,11 @@ export function ComparadorChart({ resultados, costeActual }: ComparadorChartProp
   const data = resultados
     .sort((a, b) => a.coste_total_anual - b.coste_total_anual)
     .map(r => ({
-      nombre: r.tarifa.comercializadora === 'MEGA ENERGÍA'
-        ? 'MEGA'
+      nombre: r.tarifa.comercializadora === 'GRUPO NEW ENERGY'
+        ? 'GNE'
         : r.tarifa.comercializadora,
       coste: Math.round(r.coste_total_anual),
-      esMega: r.tarifa.es_mega,
+      esGne: r.tarifa.es_gne,
     }))
 
   return (
@@ -55,7 +55,7 @@ export function ComparadorChart({ resultados, costeActual }: ComparadorChartProp
               {data.map((entry, idx) => (
                 <Cell
                   key={idx}
-                  fill={entry.esMega ? 'oklch(0.72 0.24 40)' : 'oklch(0.28 0 0)'}
+                  fill={entry.esGne ? 'oklch(0.72 0.24 40)' : 'oklch(0.28 0 0)'}
                 />
               ))}
             </Bar>

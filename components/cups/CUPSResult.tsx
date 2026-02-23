@@ -102,7 +102,7 @@ export function CUPSResult({ punto }: CUPSResultProps) {
               <span className="text-2xl font-bold text-emerald-400">
                 {punto.ahorro_estimado_anual.toLocaleString('es-ES')} €
               </span>
-              <span className="text-[10px] text-emerald-400/70">al año con MEGA ENERGÍA</span>
+              <span className="text-[10px] text-emerald-400/70">al año con GRUPO NEW ENERGY</span>
             </div>
           </div>
         </CardContent>
@@ -161,20 +161,20 @@ export function CUPSResult({ punto }: CUPSResultProps) {
           </CardContent>
         </Card>
 
-        {/* Tarifa MEGA recomendada */}
+        {/* Tarifa GNE recomendada */}
         <Card className="border-border/50 bg-card border-primary/20">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide">
               <TrendingDown className="h-3.5 w-3.5" />
-              Oferta MEGA ENERGÍA
+              Oferta GRUPO NEW ENERGY
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
             <p className="text-sm font-semibold text-foreground mb-3">
-              {punto.tarifa_mega_recomendada}
+              {punto.tarifa_gne_recomendada}
             </p>
             <div className="space-y-2">
-              {punto.precios_mega.map((p) => (
+              {punto.precios_gne.map((p) => (
                 <div key={p.periodo} className="flex items-center justify-between">
                   <span className="text-xs font-mono text-muted-foreground">{p.periodo}</span>
                   <span className="text-xs font-semibold text-primary font-mono">

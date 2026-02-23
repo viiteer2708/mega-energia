@@ -127,8 +127,8 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ],
     ultima_lectura: '2026-02-15',
     ahorro_estimado_anual: 186,
-    tarifa_mega_recomendada: 'Hogar Inteligente 2.0TD',
-    precios_mega: [
+    tarifa_gne_recomendada: 'Hogar Inteligente 2.0TD',
+    precios_gne: [
       { periodo: 'P1', precio: 0.128 },
       { periodo: 'P2', precio: 0.094 },
       { periodo: 'P3', precio: 0.062 },
@@ -166,8 +166,8 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ],
     ultima_lectura: '2026-02-18',
     ahorro_estimado_anual: 2840,
-    tarifa_mega_recomendada: 'Empresa Plus 3.0TD',
-    precios_mega: [
+    tarifa_gne_recomendada: 'Empresa Plus 3.0TD',
+    precios_gne: [
       { periodo: 'P1', precio: 0.142 },
       { periodo: 'P2', precio: 0.098 },
       { periodo: 'P3', precio: 0.068 },
@@ -203,8 +203,8 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ],
     ultima_lectura: '2026-02-10',
     ahorro_estimado_anual: 1240,
-    tarifa_mega_recomendada: 'Gas Hostelería RL.2',
-    precios_mega: [
+    tarifa_gne_recomendada: 'Gas Hostelería RL.2',
+    precios_gne: [
       { periodo: 'P1', precio: 0.068 },
     ],
   },
@@ -219,30 +219,30 @@ export const mockCUPSRecientes: CUPSBusquedaReciente[] = [
 // ── Comparador ────────────────────────────────────────────────────────────────────────────
 
 export const tarifasComparador: TarifaCompetidor[] = [
-  // MEGA ENERGÍA
+  // GRUPO NEW ENERGY
   {
-    id: 'mega-hogar-20td',
-    comercializadora: 'MEGA ENERGÍA',
+    id: 'gne-hogar-20td',
+    comercializadora: 'GRUPO NEW ENERGY',
     nombre_tarifa: 'Hogar Inteligente 2.0TD',
     tipo: 'electricidad',
     precio_p1: 0.128, precio_p2: 0.094, precio_p3: 0.062,
-    potencia_anual: 38.04, cuota_fija: 0, es_mega: true, destacado: true,
+    potencia_anual: 38.04, cuota_fija: 0, es_gne: true, destacado: true,
   },
   {
-    id: 'mega-empresa-30td',
-    comercializadora: 'MEGA ENERGÍA',
+    id: 'gne-empresa-30td',
+    comercializadora: 'GRUPO NEW ENERGY',
     nombre_tarifa: 'Empresa Plus 3.0TD',
     tipo: 'electricidad',
     precio_p1: 0.142, precio_p2: 0.098, precio_p3: 0.068,
-    potencia_anual: 36.50, cuota_fija: 0, es_mega: true, destacado: true,
+    potencia_anual: 36.50, cuota_fija: 0, es_gne: true, destacado: true,
   },
   {
-    id: 'mega-gas-rl2',
-    comercializadora: 'MEGA ENERGÍA',
+    id: 'gne-gas-rl2',
+    comercializadora: 'GRUPO NEW ENERGY',
     nombre_tarifa: 'Gas Hogar RL.2',
     tipo: 'gas',
     precio_p1: 0.068,
-    potencia_anual: 0, cuota_fija: 4.5, es_mega: true, destacado: true,
+    potencia_anual: 0, cuota_fija: 4.5, es_gne: true, destacado: true,
   },
   // Iberdrola
   {
@@ -251,7 +251,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'One Hogar 2.0TD',
     tipo: 'electricidad',
     precio_p1: 0.149, precio_p2: 0.112, precio_p3: 0.078,
-    potencia_anual: 42.60, cuota_fija: 0, es_mega: false,
+    potencia_anual: 42.60, cuota_fija: 0, es_gne: false,
   },
   {
     id: 'iberdrola-empresa',
@@ -259,7 +259,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'One Empresa 3.0TD',
     tipo: 'electricidad',
     precio_p1: 0.158, precio_p2: 0.109, precio_p3: 0.074,
-    potencia_anual: 39.80, cuota_fija: 0, es_mega: false,
+    potencia_anual: 39.80, cuota_fija: 0, es_gne: false,
   },
   // Endesa
   {
@@ -268,7 +268,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'One Luz 2.0TD',
     tipo: 'electricidad',
     precio_p1: 0.152, precio_p2: 0.108, precio_p3: 0.071,
-    potencia_anual: 41.20, cuota_fija: 1.99, es_mega: false,
+    potencia_anual: 41.20, cuota_fija: 1.99, es_gne: false,
   },
   {
     id: 'endesa-empresa',
@@ -276,7 +276,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'Empresa Luz 3.0TD',
     tipo: 'electricidad',
     precio_p1: 0.161, precio_p2: 0.112, precio_p3: 0.076,
-    potencia_anual: 40.10, cuota_fija: 0, es_mega: false,
+    potencia_anual: 40.10, cuota_fija: 0, es_gne: false,
   },
   // Naturgy
   {
@@ -285,7 +285,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'Luz Estable 2.0TD',
     tipo: 'electricidad',
     precio_p1: 0.145, precio_p2: 0.106, precio_p3: 0.069,
-    potencia_anual: 43.80, cuota_fija: 2.50, es_mega: false,
+    potencia_anual: 43.80, cuota_fija: 2.50, es_gne: false,
   },
   {
     id: 'naturgy-gas',
@@ -293,7 +293,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'Gas Natural Plus',
     tipo: 'gas',
     precio_p1: 0.079,
-    potencia_anual: 0, cuota_fija: 5.8, es_mega: false,
+    potencia_anual: 0, cuota_fija: 5.8, es_gne: false,
   },
   // Repsol
   {
@@ -302,7 +302,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'Luz Premium 2.0TD',
     tipo: 'electricidad',
     precio_p1: 0.141, precio_p2: 0.103, precio_p3: 0.072,
-    potencia_anual: 40.80, cuota_fija: 0, es_mega: false,
+    potencia_anual: 40.80, cuota_fija: 0, es_gne: false,
   },
   {
     id: 'repsol-gas',
@@ -310,7 +310,7 @@ export const tarifasComparador: TarifaCompetidor[] = [
     nombre_tarifa: 'Gas Hogar',
     tipo: 'gas',
     precio_p1: 0.074,
-    potencia_anual: 0, cuota_fija: 5.2, es_mega: false,
+    potencia_anual: 0, cuota_fija: 5.2, es_gne: false,
   },
 ]
 
@@ -383,7 +383,7 @@ export const mockMateriales: Material[] = [
   },
   {
     id: 'mat-007',
-    titulo: 'Presentación Corporativa MEGA ENERGÍA',
+    titulo: 'Presentación Corporativa GRUPO NEW ENERGY',
     descripcion: 'Presentación de empresa para clientes: historia, valores, portfolio y ventajas competitivas.',
     categoria: 'presentaciones',
     formato: 'PPTX',
@@ -405,7 +405,7 @@ export const mockMateriales: Material[] = [
   {
     id: 'mat-009',
     titulo: 'Formulario Solicitud Cambio de Comercializadora',
-    descripcion: 'Formulario oficial para tramitar el cambio desde otra comercializadora a MEGA ENERGÍA.',
+    descripcion: 'Formulario oficial para tramitar el cambio desde otra comercializadora a GRUPO NEW ENERGY.',
     categoria: 'formularios',
     formato: 'PDF',
     tamaño: '0.3 MB',
@@ -480,7 +480,7 @@ export const mockTutoriales: Tutorial[] = [
     nivel: 'básico',
     duracion_min: 18,
     fecha_publicacion: '2026-02-10',
-    autor: 'Equipo Formación MEGA',
+    autor: 'Equipo Formación GNE',
     vistas: 1243,
     destacado: true,
     nuevo: true,
@@ -550,7 +550,7 @@ export const mockTutoriales: Tutorial[] = [
     nivel: 'básico',
     duracion_min: 22,
     fecha_publicacion: '2025-12-10',
-    autor: 'Equipo Formación MEGA',
+    autor: 'Equipo Formación GNE',
     vistas: 1876,
     tags: ['puerta a puerta', 'prospección', 'pitch'],
   },
@@ -577,7 +577,7 @@ export const mockTutoriales: Tutorial[] = [
     nivel: 'avanzado',
     duracion_min: 60,
     fecha_publicacion: '2026-01-30',
-    autor: 'Dpto. Solar MEGA',
+    autor: 'Dpto. Solar GNE',
     vistas: 328,
     tags: ['solar', 'autoconsumo', 'ROI', 'subvenciones'],
   },
@@ -631,7 +631,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Iberdrola',
     cups_count: 1,
-    contratos_mega: 1,
+    contratos_gne: 1,
     ahorro_estimado: 186,
     fecha_alta: '2026-02-18',
     ultima_actividad: '2026-02-21T10:30:00',
@@ -648,7 +648,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Endesa',
     cups_count: 2,
-    contratos_mega: 2,
+    contratos_gne: 2,
     ahorro_estimado: 2840,
     fecha_alta: '2026-02-20',
     ultima_actividad: '2026-02-21T09:15:00',
@@ -665,7 +665,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Naturgy',
     cups_count: 1,
-    contratos_mega: 1,
+    contratos_gne: 1,
     ahorro_estimado: 1240,
     fecha_alta: '2026-02-21',
     ultima_actividad: '2026-02-21T16:30:00',
@@ -682,7 +682,7 @@ export const mockClientes: Cliente[] = [
     estado: 'prospecto',
     comercializadora_actual: 'Repsol',
     cups_count: 1,
-    contratos_mega: 0,
+    contratos_gne: 0,
     ahorro_estimado: 820,
     ultima_actividad: '2026-02-17T10:00:00',
     etiquetas: ['formación'],
@@ -697,7 +697,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Iberdrola',
     cups_count: 1,
-    contratos_mega: 1,
+    contratos_gne: 1,
     ultima_actividad: '2026-02-15T14:22:00',
     etiquetas: ['comercio'],
   },
@@ -711,7 +711,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Endesa',
     cups_count: 1,
-    contratos_mega: 1,
+    contratos_gne: 1,
     fecha_alta: '2026-02-19',
     ultima_actividad: '2026-02-19T10:15:00',
     etiquetas: ['comercio'],
@@ -726,7 +726,7 @@ export const mockClientes: Cliente[] = [
     estado: 'activo',
     comercializadora_actual: 'Naturgy',
     cups_count: 1,
-    contratos_mega: 1,
+    contratos_gne: 1,
     ahorro_estimado: 1680,
     fecha_alta: '2026-02-13',
     ultima_actividad: '2026-02-12T11:20:00',
@@ -742,7 +742,7 @@ export const mockClientes: Cliente[] = [
     estado: 'prospecto',
     comercializadora_actual: 'Iberdrola',
     cups_count: 0,
-    contratos_mega: 0,
+    contratos_gne: 0,
     ahorro_estimado: 3100,
     ultima_actividad: '2026-02-10T16:00:00',
     etiquetas: ['deporte'],
@@ -756,7 +756,7 @@ export const mockClientes: Cliente[] = [
     estado: 'inactivo',
     comercializadora_actual: 'Repsol',
     cups_count: 0,
-    contratos_mega: 0,
+    contratos_gne: 0,
     ultima_actividad: '2026-02-14T11:30:00',
   },
   {
@@ -769,7 +769,7 @@ export const mockClientes: Cliente[] = [
     estado: 'prospecto',
     comercializadora_actual: 'Endesa',
     cups_count: 0,
-    contratos_mega: 0,
+    contratos_gne: 0,
     ahorro_estimado: 2200,
     ultima_actividad: '2026-02-15T09:00:00',
     etiquetas: ['automoción'],

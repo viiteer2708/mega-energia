@@ -1,6 +1,6 @@
-# CLAUDE.md — MEGA ENERGÍA
+# CLAUDE.md — GRUPO NEW ENERGY
 
-Plataforma comercial interna para la red de ventas de **MEGA ENERGÍA**.
+Plataforma comercial interna para la red de ventas de **GRUPO NEW ENERGY**.
 Herramientas, materiales, tutoriales y datos de suministro en un único lugar.
 
 ---
@@ -86,16 +86,19 @@ lib/
 
 ## Usuarios mock
 
-- `carlos@megaenergia.es` / `mega2026` → COMERCIAL
-- `admin@megaenergia.es` / `mega2026` → ADMIN
+- `carlos@gruponewenergy.es` / `gne2026` → COMERCIAL
+- `admin@gruponewenergy.es` / `gne2026` → ADMIN
 
 ## Roles
 
 | Rol | Acceso |
 |-----|--------|
-| ADMIN | Todo, incluido futuro panel de gestión |
-| SUPERVISOR | Todo excepto gestión de usuarios |
-| COMERCIAL | Dashboard, materiales, tutoriales, comparador, CUPS, emails, CRM |
+ADMIN |	Acceso total al sistema. Puede ver y gestionar usuarios, contratos, clientes, facturación, pagos, márgenes internos y comisiones reales de la comercializadora. Acceso completo a configuración y futuro panel de gestión.
+BACKOFFICE | Gestión operativa completa: creación y edición de contratos, clientes, estados y documentación. Puede ver producción y facturación operativa, pero no puede ver márgenes ni comisiones reales de la comercializadora.
+DIRECTOR | Puede ver contratos, producción y facturación de todos los KAM, canales y comerciales que dependan jerárquicamente de él. No puede ver márgenes internos ni gestionar usuarios globales.
+KAM | Puede ver contratos, producción y facturación de los canales y comerciales asignados bajo su estructura directa. No puede ver márgenes internos de la comercializadora ni datos de otras ramas.
+CANAL| Puede ver su producción propia y la de los comerciales que tenga asignados bajo su estructura. Acceso a la facturación generada por su red directa.
+COMERCIAL | Puede ver exclusivamente su producción propia (contratos, clientes y facturación asociada). No tiene acceso a datos de otras ramas ni a márgenes internos.
 
 ---
 
@@ -112,7 +115,7 @@ lib/
 
 ## Prohibiciones
 
-- **NO** modificar precios MEGA en `cups/page.tsx` ni `lib/mock-data.ts` sin confirmación — son datos comerciales reales
+- **NO** modificar precios GNE en `cups/page.tsx` ni `lib/mock-data.ts` sin confirmación — son datos comerciales reales
 - **NO** exponer datos de un comercial a otro
 - **NO** usar Pages Router de Next.js
 - **NO** crear componentes sin revisar primero `components/`

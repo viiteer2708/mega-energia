@@ -90,10 +90,10 @@ export interface PuntoSuministro {
   consumo_anual_kwh: number
   consumo_mensual: ConsumoMensual[]
   ultima_lectura: string
-  // Análisis MEGA
+  // Análisis GNE
   ahorro_estimado_anual: number
-  tarifa_mega_recomendada: string
-  precios_mega: PrecioPeriodo[]
+  tarifa_gne_recomendada: string
+  precios_gne: PrecioPeriodo[]
 }
 
 export interface CUPSBusquedaReciente {
@@ -118,7 +118,7 @@ export interface TarifaCompetidor {
   precio_p3?: number     // €/kWh P3
   potencia_anual: number // €/kW·año
   cuota_fija: number     // €/mes
-  es_mega: boolean
+  es_gne: boolean
   destacado?: boolean
 }
 
@@ -192,7 +192,7 @@ export interface Cliente {
   estado: ClienteEstado
   comercializadora_actual?: string
   cups_count: number
-  contratos_mega: number
+  contratos_gne: number
   ahorro_estimado?: number
   fecha_alta?: string
   ultima_actividad: string

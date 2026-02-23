@@ -8,7 +8,7 @@ export async function updateProfile(formData: FormData) {
   const email = (formData.get('email') as string)?.trim().toLowerCase()
 
   const cookieStore = await cookies()
-  const raw = cookieStore.get('mega-session')?.value
+  const raw = cookieStore.get('gne-session')?.value
   if (!raw || !name || !email) {
     redirect('/login')
   }
@@ -16,7 +16,7 @@ export async function updateProfile(formData: FormData) {
   const session = JSON.parse(raw) as { email: string; name: string; role: string }
 
   cookieStore.set(
-    'mega-session',
+    'gne-session',
     JSON.stringify({ email, name, role: session.role }),
     {
       httpOnly: true,

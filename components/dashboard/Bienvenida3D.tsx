@@ -344,7 +344,7 @@ export function Bienvenida3D({ userName }: Bienvenida3DProps) {
               className="text-[0.65rem] sm:text-[0.85rem] md:text-[1rem] font-light tracking-widest mt-1 sm:mt-2"
               style={{ color: '#888' }}
             >
-              Bienvenido de nuevo a Mega
+              Bienvenido de nuevo a GNE
             </p>
           </div>
         </div>

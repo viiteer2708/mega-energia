@@ -5,8 +5,8 @@ import { redirect } from 'next/navigation'
 
 // Mock users — reemplazar con Supabase cuando esté configurado
 const MOCK_USERS = [
-  { email: 'carlos@megaenergia.es', password: 'mega2026', name: 'Carlos García', role: 'COMERCIAL' },
-  { email: 'admin@megaenergia.es',  password: 'mega2026', name: 'Admin MEGA',    role: 'ADMIN' },
+  { email: 'carlos@gruponewenergy.es', password: 'gne2026', name: 'Carlos García', role: 'COMERCIAL' },
+  { email: 'admin@gruponewenergy.es',  password: 'gne2026', name: 'Admin GNE',    role: 'ADMIN' },
 ]
 
 export async function signIn(formData: FormData) {
@@ -20,7 +20,7 @@ export async function signIn(formData: FormData) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set('mega-session', JSON.stringify({ email: user.email, name: user.name, role: user.role }), {
+  cookieStore.set('gne-session', JSON.stringify({ email: user.email, name: user.name, role: user.role }), {
     httpOnly: true,
     path: '/',
     maxAge: 60 * 60 * 8, // 8 horas
@@ -31,6 +31,6 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   const cookieStore = await cookies()
-  cookieStore.delete('mega-session')
+  cookieStore.delete('gne-session')
   redirect('/login')
 }
