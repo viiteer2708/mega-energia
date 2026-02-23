@@ -11,7 +11,9 @@ Herramientas, materiales, tutoriales y datos de suministro en un único lugar.
 - **Tailwind CSS 4** + **Shadcn/ui** (Radix UI) — dark mode por defecto, paleta turquesa
 - **Three.js** + React Three Fiber (logo 3D en login)
 - **Recharts 3** (gráficos dashboard)
-- **Supabase** (preparado, no activo — auth actual con cookie mock)
+- **Supabase** (Activo)
+- **Context7** (Activo)
+
 
 ## APIs externas
 
@@ -36,23 +38,24 @@ SALT:     q9YoK+PNbeWhxQ4t0InkUQ==
 - OAuth2 con refresh token permanente (se renueva automáticamente cada 4h)
 - Enlace carpeta compartida: `https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrm6dg7hsxknyw8&dl=0`
 - Carpetas principales (con IDs reales):
-  - `id:6sQNZb27aFAAAAAAAAACPg` → INSTRUCIONES & TUTORIALES
-  - `id:6sQNZb27aFAAAAAAAAAcHg` → LUZ
-  - `id:6sQNZb27aFAAAAAAAACIXg` → GAS
-  - `id:6sQNZb27aFAAAAAAAABXUg` → PLATAFORMA ADMINISTRADORES DE FINCAS
+  - `id:6sQNZb27aFAAAAAAAAAd-w` → EFFICIENT
+  - `id:6sQNZb27aFAAAAAAAAAeWg` → FAQS & TUTORIALES
+  - `id:6sQNZb27aFAAAAAAAABT7g` → COMPARADORES
+  - `id:6sQNZb27aFAAAAAAAABfYg` → MARCAS PRINCIPALES
+  - `id:6sQNZb27aFAAAAAAAABfYw` → RESTO DE MARCAS
 - Ruta interna: `/api/dropbox-link?id=<file-id>`
 
 **Credenciales:**
 ```
-APP_KEY:        f1r5zuud4kh1jqf
-APP_SECRET:     u4vkioot4ys7ne4
-REFRESH_TOKEN:  NsLHGqqRsy0AAAAAAAAAASZ7XJSChdIMK9ZGda23EYeJMfKjg4b92vrwiKZNCyzw
+APP_KEY:        m1weiqcjhu9vj7n
+APP_SECRET:     le1iy7roccqj75l
+REFRESH_TOKEN:  tRAcg_cO0xYAAAAAAAAAATf_0iM3_WcFOBqQjCMQXykWLvm8yr-Na9tKLbNNerUh
 ```
 
 Para obtener un nuevo refresh token si caduca:
-1. Abrir: `https://www.dropbox.com/oauth2/authorize?client_id=f1r5zuud4kh1jqf&response_type=code&token_access_type=offline`
+1. Abrir: `https://www.dropbox.com/oauth2/authorize?client_id=m1weiqcjhu9vj7n&response_type=code&token_access_type=offline`
 2. Autorizar y copiar el código
-3. Intercambiar: `curl -X POST https://api.dropbox.com/oauth2/token -d "code=CODIGO&grant_type=authorization_code&client_id=f1r5zuud4kh1jqf&client_secret=u4vkioot4ys7ne4"`
+3. Intercambiar: `curl -X POST https://api.dropbox.com/oauth2/token -d "code=CODIGO&grant_type=authorization_code&client_id=m1weiqcjhu9vj7n&client_secret=le1iy7roccqj75l"`
 
 ## Variables de entorno (.env.local)
 
@@ -61,9 +64,9 @@ El `.env.local` **NO se sube al repo** (está en `.gitignore`). Las variables se
 ```bash
 GREENINGENERGY_API_KEY=52tQ8+VYFeJiCauYe+y/7pwwYffyd46tuqzZQXe0trmTfLBohhOJ9n/QBq79WzSFR40DcbbIoOLdTPkLOX2URw==
 GREENINGENERGY_SALT_B64=q9YoK+PNbeWhxQ4t0InkUQ==
-DROPBOX_REFRESH_TOKEN=NsLHGqqRsy0AAAAAAAAAASZ7XJSChdIMK9ZGda23EYeJMfKjg4b92vrwiKZNCyzw
-DROPBOX_APP_KEY=f1r5zuud4kh1jqf
-DROPBOX_APP_SECRET=u4vkioot4ys7ne4
+DROPBOX_REFRESH_TOKEN=tRAcg_cO0xYAAAAAAAAAATf_0iM3_WcFOBqQjCMQXykWLvm8yr-Na9tKLbNNerUh
+DROPBOX_APP_KEY=m1weiqcjhu9vj7n
+DROPBOX_APP_SECRET=le1iy7roccqj75l
 ```
 
 ---

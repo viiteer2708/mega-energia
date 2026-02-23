@@ -69,7 +69,10 @@ async function getAccessToken(): Promise<string | null> {
 
 async function dbPost(endpoint: string, body: object) {
   const token = await getAccessToken()
-  if (!token) return null
+  if (!token) {
+    console.error('[Dropbox] No se pudo obtener token — revisa DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET')
+    return null
+  }
 
   try {
     const res = await fetch(`${DROPBOX_API}${endpoint}`, {
@@ -81,9 +84,14 @@ async function dbPost(endpoint: string, body: object) {
       body: JSON.stringify(body),
       cache: 'no-store',
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      console.error(`[Dropbox] ${endpoint} respondió ${res.status}: ${text}`)
+      return null
+    }
     return res.json()
-  } catch {
+  } catch (err) {
+    console.error(`[Dropbox] Error en ${endpoint}:`, err)
     return null
   }
 }
@@ -94,10 +102,24 @@ export async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; s
   const data = await dbPost('/files/list_folder', { path: pathOrId })
   if (!data?.entries) return { files: [], subfolders: [] }
 
+  // Acumular todas las entries, manejando paginación
+  const allEntries: typeof data.entries = [...data.entries]
+
+  let hasMore = data.has_more as boolean
+  let cursor = data.cursor as string
+
+  while (hasMore) {
+    const page = await dbPost('/files/list_folder/continue', { cursor })
+    if (!page?.entries) break
+    allEntries.push(...page.entries)
+    hasMore = page.has_more as boolean
+    cursor = page.cursor as string
+  }
+
   const files: DBFile[] = []
   const subfolders: { id: string; name: string }[] = []
 
-  for (const entry of data.entries) {
+  for (const entry of allEntries) {
     if (entry['.tag'] === 'file') {
       files.push({ id: entry.id, name: entry.name, size: entry.size, path: entry.path_display })
     } else if (entry['.tag'] === 'folder') {
@@ -112,21 +134,16 @@ export async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; s
 
 const ROOT_FOLDER_ID = 'id:Q-MSjjekoQYAAAAAAAAivA' // MATERIAL ENERGIA
 
-const MAIN_FOLDERS: { id: string; name: string }[] = [
-  { id: 'id:6sQNZb27aFAAAAAAAAAd-w', name: 'EFFICIENT' },
-  { id: 'id:6sQNZb27aFAAAAAAAAAeWg', name: 'FAQS & TUTORIALES' },
-  { id: 'id:6sQNZb27aFAAAAAAAABT7g', name: 'COMPARADORES' },
-  { id: 'id:6sQNZb27aFAAAAAAAABfYg', name: 'MARCAS PRINCIPALES' },
-  { id: 'id:6sQNZb27aFAAAAAAAABfYw', name: 'RESTO DE MARCAS' },
-]
-
 export async function getMateriales(): Promise<{ rootFiles: DBFile[]; sections: DBSection[] }> {
-  const [rootData, ...sectionData] = await Promise.all([
-    listFolder(ROOT_FOLDER_ID),
-    ...MAIN_FOLDERS.map(f => listFolder(f.id)),
-  ])
+  // Descubrir dinámicamente todas las subcarpetas de MATERIAL ENERGIA
+  const rootData = await listFolder(ROOT_FOLDER_ID)
 
-  const sections: DBSection[] = MAIN_FOLDERS.map((folder, i) => ({
+  // Cargar contenido de cada subcarpeta en paralelo
+  const sectionData = await Promise.all(
+    rootData.subfolders.map(f => listFolder(f.id))
+  )
+
+  const sections: DBSection[] = rootData.subfolders.map((folder, i) => ({
     id: folder.id,
     name: folder.name,
     files: sectionData[i].files,
