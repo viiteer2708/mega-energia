@@ -108,28 +108,23 @@ export async function listFolder(pathOrId: string): Promise<{ files: DBFile[]; s
   return { files, subfolders }
 }
 
-// ── Estructura de carpetas conocida ──────────────────────────────────────────
+// ── Estructura de carpetas: MATERIAL ENERGIA ────────────────────────────────
 
-const SHARED_LINK = 'https://www.dropbox.com/scl/fo/rmx4pz7nubvqdof1mhbri/AFa5wvHv4AABAWr-NXgOjMo?rlkey=goek0ng74bdrm6dg7hsxknyw8&dl=0'
+const ROOT_FOLDER_ID = 'id:Q-MSjjekoQYAAAAAAAAivA' // MATERIAL ENERGIA
 
 const MAIN_FOLDERS: { id: string; name: string }[] = [
-  { id: 'id:6sQNZb27aFAAAAAAAAACPg', name: 'INSTRUCIONES & TUTORIALES' },
-  { id: 'id:6sQNZb27aFAAAAAAAAAcHg', name: 'LUZ' },
-  { id: 'id:6sQNZb27aFAAAAAAAACIXg', name: 'GAS' },
-  { id: 'id:6sQNZb27aFAAAAAAAABXUg', name: 'PLATAFORMA ADMINISTRADORES DE FINCAS' },
+  { id: 'id:6sQNZb27aFAAAAAAAAAd-w', name: 'EFFICIENT' },
+  { id: 'id:6sQNZb27aFAAAAAAAAAeWg', name: 'FAQS & TUTORIALES' },
+  { id: 'id:6sQNZb27aFAAAAAAAABT7g', name: 'COMPARADORES' },
+  { id: 'id:6sQNZb27aFAAAAAAAABfYg', name: 'MARCAS PRINCIPALES' },
+  { id: 'id:6sQNZb27aFAAAAAAAABfYw', name: 'RESTO DE MARCAS' },
 ]
 
 export async function getMateriales(): Promise<{ rootFiles: DBFile[]; sections: DBSection[] }> {
   const [rootData, ...sectionData] = await Promise.all([
-    dbPost('/files/list_folder', { path: '', shared_link: { url: SHARED_LINK } }),
+    listFolder(ROOT_FOLDER_ID),
     ...MAIN_FOLDERS.map(f => listFolder(f.id)),
   ])
-
-  const rootFiles: DBFile[] = (rootData?.entries ?? [])
-    .filter((e: { '.tag': string }) => e['.tag'] === 'file')
-    .map((e: { id: string; name: string; size: number; path_display: string }) => ({
-      id: e.id, name: e.name, size: e.size, path: e.path_display,
-    }))
 
   const sections: DBSection[] = MAIN_FOLDERS.map((folder, i) => ({
     id: folder.id,
@@ -138,7 +133,7 @@ export async function getMateriales(): Promise<{ rootFiles: DBFile[]; sections: 
     subfolders: sectionData[i].subfolders,
   }))
 
-  return { rootFiles, sections }
+  return { rootFiles: rootData.files, sections }
 }
 
 export async function getTemporaryLink(fileId: string): Promise<string | null> {

@@ -2,7 +2,7 @@ import { Package, AlertCircle } from 'lucide-react'
 import { getMateriales } from '@/lib/dropbox'
 import { DropboxMateriales } from '@/components/materiales/DropboxMateriales'
 
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 export default async function MaterialesPage() {
   let rootFiles
