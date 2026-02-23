@@ -1,8 +1,10 @@
 'use client'
 
+import { useActionState, useEffect, useRef } from 'react'
 import { CREATABLE_ROLES } from '@/lib/types'
 import type { Role } from '@/lib/types'
 import { createUser } from '@/app/(app)/usuarios/actions'
+import type { CreateUserResult } from '@/app/(app)/usuarios/actions'
 
 const roleLabels: Record<Role, string> = {
   ADMIN: 'Administrador',
@@ -23,13 +25,38 @@ interface CreateUserFormProps {
 
 export function CreateUserForm({ currentRole, onCancel }: CreateUserFormProps) {
   const allowedRoles = CREATABLE_ROLES[currentRole]
+  const formRef = useRef<HTMLFormElement>(null)
+
+  const [state, formAction, isPending] = useActionState<CreateUserResult | null, FormData>(
+    createUser,
+    null
+  )
+
+  useEffect(() => {
+    if (state?.ok) {
+      formRef.current?.reset()
+    }
+  }, [state])
 
   return (
     <form
-      action={createUser}
+      ref={formRef}
+      action={formAction}
       className="rounded-xl border border-primary/20 bg-card p-4 space-y-4"
     >
       <h3 className="text-sm font-semibold text-foreground">Crear nuevo usuario</h3>
+
+      {state?.error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+          {state.error}
+        </div>
+      )}
+
+      {state?.ok && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-400">
+          Usuario creado correctamente.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
@@ -102,9 +129,10 @@ export function CreateUserForm({ currentRole, onCancel }: CreateUserFormProps) {
         </button>
         <button
           type="submit"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          disabled={isPending}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          Crear usuario
+          {isPending ? 'Creando...' : 'Crear usuario'}
         </button>
       </div>
     </form>
