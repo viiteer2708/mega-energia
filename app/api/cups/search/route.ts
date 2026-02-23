@@ -49,8 +49,9 @@ function decrypt(buf: Buffer, ivB64: string): string {
   if (!saltB64) throw new Error('SALT not configured')
   const salt = Buffer.from(saltB64, 'base64')
   const iv = Buffer.from(ivB64, 'base64')
+  const apiKeyBytes = Buffer.from(process.env.GREENINGENERGY_API_KEY!, 'base64')
   const derivedKey = crypto.pbkdf2Sync(
-    process.env.GREENINGENERGY_API_KEY!,
+    apiKeyBytes,
     salt, 100_000, 32, 'sha256'
   )
   const decipher = crypto.createDecipheriv('aes-256-cbc', derivedKey, iv)
@@ -77,8 +78,8 @@ async function apiGet(path: string): Promise<unknown> {
   if (iv) {
     try {
       text = decrypt(buf, iv)
-    } catch {
-      text = buf.toString('utf8')
+    } catch (e) {
+      throw new Error(`Decryption failed: ${e instanceof Error ? e.message : 'unknown'}`)
     }
   } else {
     text = buf.toString('utf8')
