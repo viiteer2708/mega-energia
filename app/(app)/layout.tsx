@@ -13,11 +13,11 @@ export default async function AppLayout({
 
   // Fallback — middleware ya redirige si no hay sesión
   const session = raw
-    ? (JSON.parse(raw) as { email: string; name: string; role: string })
-    : { email: 'comercial@gruponewenergy.es', name: 'Comercial', role: 'COMERCIAL' }
+    ? (JSON.parse(raw) as { id: string; email: string; name: string; role: string })
+    : { id: 'com-01', email: 'comercial@gruponewenergy.es', name: 'Comercial', role: 'COMERCIAL' }
 
   const user: UserProfile = {
-    id: Buffer.from(session.email).toString('base64url'),
+    id: session.id,
     email: session.email,
     full_name: session.name,
     role: session.role as Role,

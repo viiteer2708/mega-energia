@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'SUPERVISOR' | 'COMERCIAL'
+export type Role = 'ADMIN' | 'BACKOFFICE' | 'DIRECTOR' | 'KAM' | 'CANAL' | 'COMERCIAL'
 
 export interface UserProfile {
   id: string
@@ -40,10 +40,12 @@ export interface Actividad {
 }
 
 export interface ComercialRanking {
+  id: string
   posicion: number
   nombre: string
   contratos: number
   facturacion: number
+  parent_id?: string
   avatar_url?: string
 }
 

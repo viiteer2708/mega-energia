@@ -86,8 +86,13 @@ lib/
 
 ## Usuarios mock
 
-- `carlos@gruponewenergy.es` / `gne2026` → COMERCIAL
-- `admin@gruponewenergy.es` / `gne2026` → ADMIN
+| Email | Password | Rol | Nombre |
+|-------|----------|-----|--------|
+| `admin@gruponewenergy.es` | `gne2026` | ADMIN | Víctor Marrón |
+| `director@gruponewenergy.es` | `gne2026` | DIRECTOR | Alejandro Sacristán |
+| `kam@gruponewenergy.es` | `gne2026` | KAM | Miguel Ángel Rubio |
+| `canal@gruponewenergy.es` | `gne2026` | CANAL | Roberto Bilbao |
+| `comercial@gruponewenergy.es` | `gne2026` | COMERCIAL | Aitor Carracedo |
 
 ## Roles
 

@@ -5,8 +5,11 @@ import { redirect } from 'next/navigation'
 
 // Mock users — reemplazar con Supabase cuando esté configurado
 const MOCK_USERS = [
-  { email: 'carlos@gruponewenergy.es', password: 'gne2026', name: 'Carlos García', role: 'COMERCIAL' },
-  { email: 'admin@gruponewenergy.es',  password: 'gne2026', name: 'Admin GNE',    role: 'ADMIN' },
+  { id: 'admin-01',  email: 'admin@gruponewenergy.es',     password: 'gne2026', name: 'Víctor Marrón',        role: 'ADMIN' },
+  { id: 'dir-01',    email: 'director@gruponewenergy.es',  password: 'gne2026', name: 'Alejandro Sacristán',  role: 'DIRECTOR' },
+  { id: 'kam-01',    email: 'kam@gruponewenergy.es',       password: 'gne2026', name: 'Miguel Ángel Rubio',   role: 'KAM' },
+  { id: 'canal-01',  email: 'canal@gruponewenergy.es',     password: 'gne2026', name: 'Roberto Bilbao',       role: 'CANAL' },
+  { id: 'com-01',    email: 'comercial@gruponewenergy.es', password: 'gne2026', name: 'Aitor Carracedo',      role: 'COMERCIAL' },
 ]
 
 export async function signIn(formData: FormData) {
@@ -20,7 +23,7 @@ export async function signIn(formData: FormData) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set('gne-session', JSON.stringify({ email: user.email, name: user.name, role: user.role }), {
+  cookieStore.set('gne-session', JSON.stringify({ id: user.id, email: user.email, name: user.name, role: user.role }), {
     httpOnly: true,
     path: '/',
     maxAge: 60 * 60 * 8, // 8 horas

@@ -19,15 +19,18 @@ import {
   mockActividades,
   mockRanking,
 } from '@/lib/mock-data'
+import { filterRankingByRole } from '@/lib/ranking-filter'
+import type { Role } from '@/lib/types'
 
 export default async function DashboardPage() {
   const cookieStore = await cookies()
   const raw = cookieStore.get('gne-session')?.value
   const session = raw
-    ? (JSON.parse(raw) as { email: string; name: string; role: string })
-    : { email: '', name: 'Usuario', role: 'COMERCIAL' }
+    ? (JSON.parse(raw) as { id: string; email: string; name: string; role: string })
+    : { id: 'com-01', email: '', name: 'Usuario', role: 'COMERCIAL' }
 
   const kpis = mockKPIs
+  const filteredRanking = filterRankingByRole(mockRanking, session.id, session.role as Role)
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -83,7 +86,7 @@ export default async function DashboardPage() {
       {/* Bottom row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <RankingCard
-          data={mockRanking}
+          data={filteredRanking}
           currentUserName={session.name}
         />
         <ActivityFeed actividades={mockActividades} />

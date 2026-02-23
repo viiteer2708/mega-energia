@@ -89,11 +89,14 @@ export const mockActividades: Actividad[] = [
 ]
 
 export const mockRanking: ComercialRanking[] = [
-  { posicion: 1, nombre: 'Ana Rodríguez', contratos: 31, facturacion: 67400 },
-  { posicion: 2, nombre: 'Miguel Fernández', contratos: 28, facturacion: 59200 },
-  { posicion: 3, nombre: 'Carlos García', contratos: 23, facturacion: 48320 },
-  { posicion: 4, nombre: 'Laura Sánchez', contratos: 19, facturacion: 41800 },
-  { posicion: 5, nombre: 'David Torres', contratos: 16, facturacion: 34600 },
+  { id: 'dir-01', posicion: 1, nombre: 'Alejandro Sacristán', contratos: 0, facturacion: 0 },
+  { id: 'kam-02', posicion: 2, nombre: 'Beatriz Torrijos', contratos: 31, facturacion: 67400, parent_id: 'dir-01' },
+  { id: 'kam-01', posicion: 3, nombre: 'Miguel Ángel Rubio', contratos: 28, facturacion: 59200, parent_id: 'dir-01' },
+  { id: 'canal-01', posicion: 4, nombre: 'Roberto Bilbao', contratos: 23, facturacion: 48320, parent_id: 'kam-01' },
+  { id: 'kam-03', posicion: 5, nombre: 'Javi Brime', contratos: 19, facturacion: 41800, parent_id: 'dir-01' },
+  { id: 'kam-04', posicion: 6, nombre: 'Ismael García', contratos: 16, facturacion: 34600, parent_id: 'dir-01' },
+  { id: 'kam-05', posicion: 7, nombre: 'Marta Rudiez', contratos: 12, facturacion: 26800, parent_id: 'dir-01' },
+  { id: 'com-01', posicion: 8, nombre: 'Aitor Carracedo', contratos: 9, facturacion: 18500, parent_id: 'canal-01' },
 ]
 
 // ── CUPS ─────────────────────────────────────────────────────────────────────
