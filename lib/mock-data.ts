@@ -20,7 +20,7 @@ export const mockKPIs: KPIData = {
   consumo_total_luz: 103220,
   facturacion: 48320,
   consumo_total_gas: 52000,
-  wallet: (103220 + 52000) * 0.5,
+  wallet: (103220 + 52000) * 0.0005,
 }
 
 export const mockVentasMensuales: ContratoMensual[] = [

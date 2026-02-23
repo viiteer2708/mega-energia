@@ -71,7 +71,7 @@ export default async function DashboardPage() {
           value={`${kpis.wallet.toLocaleString('es-ES')} €`}
           icon={Wallet}
           accentColor="purple"
-          subtitle="(luz + gas) × 0,5"
+          subtitle="0,5 €/mW"
         />
       </div>
 
