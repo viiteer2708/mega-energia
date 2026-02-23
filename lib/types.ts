@@ -196,7 +196,7 @@ export interface Cliente {
   comercializadora_actual?: string
   cups_count: number
   contratos_gne: number
-  ahorro_estimado?: number
+  comision?: number
   fecha_alta?: string
   ultima_actividad: string
   etiquetas?: string[]
@@ -217,11 +217,9 @@ export interface Oportunidad {
 
 export interface CRMStats {
   total_clientes: number
-  clientes_activos: number
-  prospectos: number
-  oportunidades_abiertas: number
-  valor_pipeline: number
-  conversiones_mes: number
+  incidencias: number
+  comisionado: number
+  volumen_mwh: number
 }
 
 // ── Tutoriales ────────────────────────────────────────────────────────────────
@@ -250,4 +248,34 @@ export interface Tutorial {
   destacado?: boolean
   nuevo?: boolean
   tags: string[]
+}
+
+// ── Gestión de usuarios ──────────────────────────────────────────────────────
+
+/** Roles que cada rol puede crear */
+export const CREATABLE_ROLES: Record<Role, Role[]> = {
+  ADMIN: ['BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL', 'COMERCIAL'],
+  BACKOFFICE: [],
+  DIRECTOR: ['KAM', 'CANAL', 'COMERCIAL'],
+  KAM: ['CANAL', 'COMERCIAL'],
+  CANAL: ['COMERCIAL'],
+  COMERCIAL: [],
+}
+
+/** Roles que pueden acceder a la sección de gestión de usuarios */
+export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'DIRECTOR', 'KAM', 'CANAL']
+
+export interface CreateUserPayload {
+  email: string
+  password: string
+  full_name: string
+  role: Role
+}
+
+export interface UserListItem {
+  id: string
+  email: string
+  full_name: string
+  role: Role
+  created_at: string
 }

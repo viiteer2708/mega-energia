@@ -11,6 +11,7 @@ import {
   BookOpen,
   Mail,
   Users,
+  UserPlus,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import type { UserProfile } from '@/lib/types'
+import { ROLES_CAN_MANAGE_USERS } from '@/lib/types'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -140,6 +142,39 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
             )
           })}
         </ul>
+
+        {/* Usuarios — solo visible para roles con gestión */}
+        {user && ROLES_CAN_MANAGE_USERS.includes(user.role) && (
+          <>
+            <Separator className="my-3 opacity-50" />
+            <ul>
+              <li>
+                {(() => {
+                  const isActive = pathname === '/usuarios' || pathname.startsWith('/usuarios/')
+                  return (
+                    <Link
+                      href="/usuarios"
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                        collapsed && 'justify-center px-2',
+                        isActive
+                          ? 'bg-primary/15 text-primary border border-primary/20 gne-card-glow'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                      title={collapsed ? 'Usuarios' : undefined}
+                    >
+                      <UserPlus className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
+                      {!collapsed && <span>Usuarios</span>}
+                      {isActive && !collapsed && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  )
+                })()}
+              </li>
+            </ul>
+          </>
+        )}
       </nav>
 
       <Separator className="opacity-50" />

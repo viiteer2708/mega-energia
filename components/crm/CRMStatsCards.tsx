@@ -1,4 +1,4 @@
-import { type LucideIcon, Users, UserCheck, Target, TrendingUp, Euro, Award } from 'lucide-react'
+import { type LucideIcon, Users, AlertTriangle, Euro, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CRMStats } from '@/lib/types'
 
@@ -24,44 +24,30 @@ export function CRMStatsCards({ stats }: CRMStatsCardsProps) {
       description: 'en la cartera',
     },
     {
-      label: 'Activos',
-      value: stats.clientes_activos.toString(),
-      icon: UserCheck,
-      color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-      description: 'con contrato vigente',
+      label: 'Incidencias',
+      value: stats.incidencias.toString(),
+      icon: AlertTriangle,
+      color: 'text-red-400 bg-red-400/10 border-red-400/20',
+      description: 'pendientes de resolver',
     },
     {
-      label: 'Prospectos',
-      value: stats.prospectos.toString(),
-      icon: Target,
-      color: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-      description: 'en seguimiento',
-    },
-    {
-      label: 'Oportunidades',
-      value: stats.oportunidades_abiertas.toString(),
-      icon: TrendingUp,
-      color: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-      description: 'abiertas en pipeline',
-    },
-    {
-      label: 'Valor pipeline',
-      value: `${stats.valor_pipeline.toLocaleString('es-ES')} €`,
+      label: 'Comisionado',
+      value: `${stats.comisionado.toLocaleString('es-ES')} €`,
       icon: Euro,
-      color: 'text-primary bg-primary/10 border-primary/20',
-      description: 'ahorro estimado/año',
+      color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+      description: 'acumulado',
     },
     {
-      label: 'Conversiones',
-      value: stats.conversiones_mes.toString(),
-      icon: Award,
-      color: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-      description: 'contratos este mes',
+      label: 'Volumen mWh',
+      value: stats.volumen_mwh.toLocaleString('es-ES'),
+      icon: Activity,
+      color: 'text-primary bg-primary/10 border-primary/20',
+      description: 'energía gestionada',
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {items.map(item => {
         const Icon = item.icon
         return (

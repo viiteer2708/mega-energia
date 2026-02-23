@@ -121,10 +121,10 @@ export function ClienteList({ clientes }: ClienteListProps) {
                     )}
                   </div>
                 </div>
-                {cliente.ahorro_estimado && (
+                {cliente.comision && (
                   <div className="shrink-0 text-right hidden sm:block">
-                    <p className="text-sm font-semibold text-primary">{cliente.ahorro_estimado.toLocaleString('es-ES')} €</p>
-                    <p className="text-[10px] text-muted-foreground">ahorro/año</p>
+                    <p className="text-sm font-semibold text-emerald-400">{cliente.comision.toLocaleString('es-ES')} €</p>
+                    <p className="text-[10px] text-muted-foreground">comisión</p>
                   </div>
                 )}
                 <ChevronRight className={cn(
