@@ -5,7 +5,7 @@ import { UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import type { UserProfile, UserListItem } from '@/lib/types'
+import type { UserProfile, UserListItem, AssignableUser } from '@/lib/types'
 import { CreateUserForm } from './CreateUserForm'
 
 const roleColors: Record<string, string> = {
@@ -20,9 +20,10 @@ const roleColors: Record<string, string> = {
 interface UserManagementProps {
   currentUser: UserProfile
   users: UserListItem[]
+  assignableUsers: AssignableUser[]
 }
 
-export function UserManagement({ currentUser, users }: UserManagementProps) {
+export function UserManagement({ currentUser, users, assignableUsers }: UserManagementProps) {
   const [showForm, setShowForm] = useState(false)
 
   return (
@@ -58,6 +59,8 @@ export function UserManagement({ currentUser, users }: UserManagementProps) {
       {showForm && (
         <CreateUserForm
           currentRole={currentUser.role}
+          currentUserId={currentUser.id}
+          assignableUsers={assignableUsers}
           onCancel={() => setShowForm(false)}
         />
       )}

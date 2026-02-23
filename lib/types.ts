@@ -1,4 +1,5 @@
 export type Role = 'ADMIN' | 'BACKOFFICE' | 'DIRECTOR' | 'KAM' | 'CANAL' | 'COMERCIAL'
+export type CommissionType = 'partner' | 'master' | 'distribuidor' | 'otro'
 
 export interface UserProfile {
   id: string
@@ -8,6 +9,24 @@ export interface UserProfile {
   parent_id?: string | null
   avatar_url?: string
   wolfcrm_id?: string
+  // Datos comerciales
+  alias?: string
+  commercial_nif?: string
+  commercial_address?: string
+  commercial_postal_code?: string
+  // Facturación
+  billing_name?: string
+  billing_nif?: string
+  billing_address?: string
+  billing_postal_code?: string
+  billing_city?: string
+  billing_iban?: string
+  billing_retention_pct?: number
+  billing_vat_pct?: number
+  // Configuración comercial
+  commission_type?: CommissionType
+  wallet_personal?: number
+  wallet_family?: number
 }
 
 export interface KPIData {
@@ -269,7 +288,28 @@ export interface CreateUserPayload {
   email: string
   password: string
   full_name: string
+  alias: string
   role: Role
+  // Datos comerciales (opcionales)
+  commercial_nif?: string
+  commercial_address?: string
+  commercial_postal_code?: string
+  // Facturación (opcionales)
+  billing_name?: string
+  billing_nif?: string
+  billing_address?: string
+  billing_postal_code?: string
+  billing_city?: string
+  billing_iban?: string
+  billing_retention_pct?: number
+  billing_vat_pct?: number
+  // Configuración comercial
+  commission_type?: CommissionType
+  wallet_personal?: number
+  wallet_family?: number
+  // Estructura jerárquica
+  parent_id?: string
+  subordinate_ids?: string[]
 }
 
 export interface UserListItem {
@@ -277,5 +317,14 @@ export interface UserListItem {
   email: string
   full_name: string
   role: Role
+  alias?: string
+  commission_type?: CommissionType
   created_at: string
+}
+
+export interface AssignableUser {
+  id: string
+  full_name: string
+  role: Role
+  parent_id: string | null
 }
