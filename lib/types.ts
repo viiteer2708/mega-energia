@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string
   full_name: string
   role: Role
+  parent_id?: string | null
   avatar_url?: string
   wolfcrm_id?: string
 }

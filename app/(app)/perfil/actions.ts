@@ -1,29 +1,26 @@
 'use server'
 
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 
 export async function updateProfile(formData: FormData) {
   const name = (formData.get('name') as string)?.trim()
-  const email = (formData.get('email') as string)?.trim().toLowerCase()
 
-  const cookieStore = await cookies()
-  const raw = cookieStore.get('gne-session')?.value
-  if (!raw || !name || !email) {
+  if (!name) {
+    redirect('/perfil')
+  }
+
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
     redirect('/login')
   }
 
-  const session = JSON.parse(raw) as { email: string; name: string; role: string }
-
-  cookieStore.set(
-    'gne-session',
-    JSON.stringify({ email, name, role: session.role }),
-    {
-      httpOnly: true,
-      path: '/',
-      maxAge: 60 * 60 * 8,
-    }
-  )
+  await supabase
+    .from('profiles')
+    .update({ full_name: name })
+    .eq('id', user.id)
 
   redirect('/perfil')
 }

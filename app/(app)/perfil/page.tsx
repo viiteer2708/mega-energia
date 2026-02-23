@@ -1,16 +1,13 @@
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { ProfileForm } from './ProfileForm'
+import { getSession } from '@/lib/session'
 
 export default async function PerfilPage() {
-  const cookieStore = await cookies()
-  const raw = cookieStore.get('gne-session')?.value
+  const user = await getSession()
 
-  if (!raw) {
+  if (!user) {
     redirect('/login')
   }
-
-  const session = JSON.parse(raw) as { email: string; name: string; role: string }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -22,9 +19,9 @@ export default async function PerfilPage() {
       </div>
 
       <ProfileForm
-        name={session.name}
-        email={session.email}
-        role={session.role}
+        name={user.full_name}
+        email={user.email}
+        role={user.role}
       />
     </div>
   )

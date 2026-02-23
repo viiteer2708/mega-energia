@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import {
   FileText,
   Zap,
@@ -20,22 +20,32 @@ import {
   mockRanking,
 } from '@/lib/mock-data'
 import { filterRankingByRole } from '@/lib/ranking-filter'
-import type { Role } from '@/lib/types'
+import { getSession } from '@/lib/session'
+
+// Mapeo temporal UUID Supabase → mock ID hasta Fase 2 (contratos en Supabase)
+const uuidToMockId: Record<string, string> = {
+  '7265a7d9-638c-4137-850d-bdacb244927a': 'admin-01',
+  '8c3ebc70-596a-4d76-95eb-8e09badff93e': 'dir-01',
+  '7e8cd835-561b-4a39-9f18-1d8d3e79a847': 'kam-01',
+  'da027fcc-5a61-4729-a1b9-03fd737f8cde': 'canal-01',
+  '5a7b4253-3f08-4061-a94c-cadef4006fa8': 'com-01',
+}
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  const raw = cookieStore.get('gne-session')?.value
-  const session = raw
-    ? (JSON.parse(raw) as { id: string; email: string; name: string; role: string })
-    : { id: 'com-01', email: '', name: 'Usuario', role: 'COMERCIAL' }
+  const user = await getSession()
 
+  if (!user) {
+    redirect('/login')
+  }
+
+  const mockUserId = uuidToMockId[user.id] ?? user.id
   const kpis = mockKPIs
-  const filteredRanking = filterRankingByRole(mockRanking, session.id, session.role as Role)
+  const filteredRanking = filterRankingByRole(mockRanking, mockUserId, user.role)
 
   return (
     <div className="space-y-6 max-w-[1400px]">
       {/* Header con nombre HUD/wireframe */}
-      <DashboardHeader userName={session.name} />
+      <DashboardHeader userName={user.full_name} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -87,7 +97,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <RankingCard
           data={filteredRanking}
-          currentUserName={session.name}
+          currentUserName={user.full_name}
         />
         <ActivityFeed actividades={mockActividades} />
       </div>

@@ -9,7 +9,10 @@ import type { UserProfile } from '@/lib/types'
 
 const roleColors: Record<string, string> = {
   ADMIN: 'bg-red-500/20 text-red-400 border-red-500/30',
-  SUPERVISOR: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  BACKOFFICE: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  DIRECTOR: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  KAM: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  CANAL: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   COMERCIAL: 'bg-primary/20 text-primary border-primary/30',
 }
 

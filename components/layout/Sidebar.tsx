@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
+import { signOut } from '@/app/login/actions'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +34,10 @@ const navItems = [
 
 const roleColors: Record<string, string> = {
   ADMIN: 'bg-red-500/20 text-red-400 border-red-500/30',
-  SUPERVISOR: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  BACKOFFICE: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  DIRECTOR: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  KAM: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  CANAL: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   COMERCIAL: 'bg-primary/20 text-primary border-primary/30',
 }
 
@@ -178,15 +182,15 @@ export function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
           )}
         </Link>
         {!collapsed && (
-          <button
-            className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
-            title="Cerrar sesión"
-            onClick={() => {
-              window.location.href = '/login'
-            }}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="ml-auto text-muted-foreground hover:text-destructive transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </form>
         )}
       </div>
     </aside>
