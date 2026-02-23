@@ -5,6 +5,7 @@ import {
   Euro,
   Flame,
   Wallet,
+  Users,
 } from 'lucide-react'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { KPICard } from '@/components/dashboard/KPICard'
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
   const mockUserId = uuidToMockId[user.id] ?? user.id
   const kpis = mockKPIs
   const filteredRanking = filterRankingByRole(mockRanking, mockUserId, user.role)
+  const currentYear = new Date().getFullYear()
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -48,28 +50,28 @@ export default async function DashboardPage() {
       <DashboardHeader userName={user.full_name} />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <KPICard
           title="Contratos este mes"
           value={kpis.contratos_mes.toString()}
           variacion={kpis.contratos_variacion}
           icon={FileText}
           accentColor="teal"
-          subtitle="contratos firmados"
+          subtitle="contratos OK"
         />
         <KPICard
-          title="Consumo total luz"
+          title={`Consumo luz ${currentYear}`}
           value={`${kpis.consumo_total_luz.toLocaleString('es-ES')} kWh`}
           icon={Zap}
           accentColor="blue"
-          subtitle="consumo acumulado"
+          subtitle={`enero - diciembre ${currentYear}`}
         />
         <KPICard
-          title="Consumo total gas"
+          title={`Consumo gas ${currentYear}`}
           value={`${kpis.consumo_total_gas.toLocaleString('es-ES')} kWh`}
           icon={Flame}
           accentColor="orange"
-          subtitle="consumo acumulado"
+          subtitle={`enero - diciembre ${currentYear}`}
         />
         <KPICard
           title="Facturación generada"
@@ -80,10 +82,17 @@ export default async function DashboardPage() {
           subtitle="ingresos del mes"
         />
         <KPICard
-          title="Wallet"
+          title="Wallet Propio"
           value={`${kpis.wallet.toLocaleString('es-ES')} €`}
           icon={Wallet}
           accentColor="purple"
+        />
+        <KPICard
+          title="Wallet Family"
+          value={`${kpis.wallet_family.toLocaleString('es-ES')} €`}
+          icon={Users}
+          accentColor="red"
+          subtitle="equipo asignado"
         />
       </div>
 

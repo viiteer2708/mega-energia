@@ -36,6 +36,7 @@ export interface KPIData {
   facturacion: number
   consumo_total_gas: number
   wallet: number
+  wallet_family: number
 }
 
 export interface ContratoMensual {
