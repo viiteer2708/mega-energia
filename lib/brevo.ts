@@ -74,6 +74,8 @@ function mapCampaign(c: BrevoApiCampaign): BrevoCampaign {
   }
 }
 
+const MAX_EMAILS = 25
+
 export async function getCampaigns(): Promise<BrevoCampaign[]> {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) return []
@@ -81,10 +83,9 @@ export async function getCampaigns(): Promise<BrevoCampaign[]> {
   try {
     const result: BrevoCampaign[] = []
     let offset = 0
-    const limit = 100
+    const limit = 50
 
-    // Paginar secuencialmente hasta no encontrar matches
-    while (offset < 1000) {
+    while (offset < 500 && result.length < MAX_EMAILS) {
       const page = await fetchPage(apiKey, offset, limit)
       if (page.length === 0) break
 
@@ -94,9 +95,9 @@ export async function getCampaigns(): Promise<BrevoCampaign[]> {
 
       for (const c of matches) {
         result.push(mapCampaign(c))
+        if (result.length >= MAX_EMAILS) break
       }
 
-      // Si no hay matches en esta página, parar
       if (matches.length === 0) break
 
       offset += limit

@@ -5,9 +5,14 @@ import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://epouditgydvspsfcqfsx.supabase.co'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwb3VkaXRneWR2c3BzZmNxZnN4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTgwNjYyMCwiZXhwIjoyMDg3MzgyNjIwfQ.LZDlyoWCeKNiwEbVc8hmsWwtz8J63WsSDe7zdEMp78I'
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY')
+  console.error('Configúralas en .env.local o expórtalas antes de ejecutar este script.')
+  process.exit(1)
+}
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },

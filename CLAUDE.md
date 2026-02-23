@@ -56,7 +56,7 @@ Para obtener un nuevo refresh token si caduca:
 
 ## Variables de entorno (.env.local)
 
-El `.env.local` **SÍ se sube al repo** (configurado en `.gitignore` con `!.env.local`).
+El `.env.local` **NO se sube al repo** (está en `.gitignore`). Las variables se configuran en **Vercel** como env vars y localmente en `.env.local`.
 
 ```bash
 GREENINGENERGY_API_KEY=52tQ8+VYFeJiCauYe+y/7pwwYffyd46tuqzZQXe0trmTfLBohhOJ9n/QBq79WzSFR40DcbbIoOLdTPkLOX2URw==
