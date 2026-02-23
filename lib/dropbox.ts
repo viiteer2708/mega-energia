@@ -79,7 +79,7 @@ async function dbPost(endpoint: string, body: object) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
-      next: { revalidate: 300 },
+      cache: 'no-store',
     })
     if (!res.ok) return null
     return res.json()
