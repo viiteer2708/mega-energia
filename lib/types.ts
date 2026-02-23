@@ -282,7 +282,7 @@ export const CREATABLE_ROLES: Record<Role, Role[]> = {
 }
 
 /** Roles que pueden acceder a la sección de gestión de usuarios */
-export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'DIRECTOR', 'KAM', 'CANAL']
+export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL']
 
 export interface CreateUserPayload {
   email: string

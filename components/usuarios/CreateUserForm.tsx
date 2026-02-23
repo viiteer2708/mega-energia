@@ -130,7 +130,7 @@ function ParentSelect({
         {displayText}
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border border-border bg-popover shadow-lg">
+        <div className="absolute z-50 mt-1 w-full max-h-80 overflow-auto rounded-md border border-border bg-popover shadow-lg">
           <div className="sticky top-0 bg-popover p-2 border-b border-border">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -240,7 +240,7 @@ function SubordinateSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-border bg-popover shadow-lg">
+        <div className="absolute z-50 mt-1 w-full max-h-80 overflow-auto rounded-md border border-border bg-popover shadow-lg">
           <div className="sticky top-0 bg-popover p-2 border-b border-border">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
