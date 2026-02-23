@@ -21,49 +21,71 @@ const DROPBOX_API = 'https://api.dropboxapi.com/2'
 let cachedToken: string | null = null
 let tokenExpiresAt = 0
 
-async function getAccessToken(): Promise<string> {
-  // Si el token es válido durante al menos los próximos 5 minutos, reutilizarlo
+async function getAccessToken(): Promise<string | null> {
   if (cachedToken && Date.now() < tokenExpiresAt - 5 * 60 * 1000) {
     return cachedToken
   }
 
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: process.env.DROPBOX_REFRESH_TOKEN!,
-    client_id: process.env.DROPBOX_APP_KEY!,
-    client_secret: process.env.DROPBOX_APP_SECRET!,
-  })
+  const refreshToken = process.env.DROPBOX_REFRESH_TOKEN
+  const clientId = process.env.DROPBOX_APP_KEY
+  const clientSecret = process.env.DROPBOX_APP_SECRET
 
-  const res = await fetch('https://api.dropbox.com/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-    cache: 'no-store',
-  })
+  if (!refreshToken || !clientId || !clientSecret) {
+    console.error('[Dropbox] Faltan variables de entorno DROPBOX_*')
+    return null
+  }
 
-  const data = await res.json()
-  if (!data.access_token) throw new Error('Dropbox token refresh failed')
+  try {
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+    })
 
-  cachedToken = data.access_token
-  tokenExpiresAt = Date.now() + data.expires_in * 1000
-  return cachedToken!
+    const res = await fetch('https://api.dropbox.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+      cache: 'no-store',
+    })
+
+    const data = await res.json()
+    if (!data.access_token) {
+      console.error('[Dropbox] Token refresh failed:', data)
+      return null
+    }
+
+    cachedToken = data.access_token
+    tokenExpiresAt = Date.now() + data.expires_in * 1000
+    return cachedToken!
+  } catch (err) {
+    console.error('[Dropbox] Error al refrescar token:', err)
+    return null
+  }
 }
 
 // ── API helper ────────────────────────────────────────────────────────────────
 
 async function dbPost(endpoint: string, body: object) {
   const token = await getAccessToken()
-  const res = await fetch(`${DROPBOX_API}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-    next: { revalidate: 300 },
-  })
-  if (!res.ok) return null
-  return res.json()
+  if (!token) return null
+
+  try {
+    const res = await fetch(`${DROPBOX_API}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      next: { revalidate: 300 },
+    })
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
 }
 
 // ── Folder listing ────────────────────────────────────────────────────────────
