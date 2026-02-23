@@ -4,8 +4,8 @@ import crypto from 'crypto'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const apiKey = process.env.GREENINGENERGY_API_KEY
-  const saltB64 = process.env.GREENINGENERGY_SALT_B64
+  const apiKey = process.env.GREENINGENERGY_API_KEY?.trim()
+  const saltB64 = process.env.GREENINGENERGY_SALT_B64?.trim()
 
   const envStatus = {
     GREENINGENERGY_API_KEY: apiKey

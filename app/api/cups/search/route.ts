@@ -45,12 +45,12 @@ function mapTarifa(atrCode: string | null, tipoTarifa?: number | null): string |
 // ── Decryption (only used when API returns x-iv header) ───────────────────
 
 function decrypt(buf: Buffer, ivB64: string): string {
-  const saltB64 = process.env.GREENINGENERGY_SALT_B64
+  const saltB64 = process.env.GREENINGENERGY_SALT_B64?.trim()
   if (!saltB64) throw new Error('SALT not configured')
   const salt = Buffer.from(saltB64, 'base64')
   const iv = Buffer.from(ivB64, 'base64')
   const derivedKey = crypto.pbkdf2Sync(
-    process.env.GREENINGENERGY_API_KEY!,
+    process.env.GREENINGENERGY_API_KEY!.trim(),
     salt, 100_000, 32, 'sha256'
   )
   const decipher = crypto.createDecipheriv('aes-256-cbc', derivedKey, iv)
@@ -61,7 +61,7 @@ function decrypt(buf: Buffer, ivB64: string): string {
 
 async function apiGet(path: string): Promise<unknown> {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'x-api-key': process.env.GREENINGENERGY_API_KEY! },
+    headers: { 'x-api-key': process.env.GREENINGENERGY_API_KEY!.trim() },
     cache: 'no-store',
   })
 
