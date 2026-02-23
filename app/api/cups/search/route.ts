@@ -49,9 +49,8 @@ function decrypt(buf: Buffer, ivB64: string): string {
   if (!saltB64) throw new Error('SALT not configured')
   const salt = Buffer.from(saltB64, 'base64')
   const iv = Buffer.from(ivB64, 'base64')
-  const apiKeyBytes = Buffer.from(process.env.GREENINGENERGY_API_KEY!, 'base64')
   const derivedKey = crypto.pbkdf2Sync(
-    apiKeyBytes,
+    process.env.GREENINGENERGY_API_KEY!,
     salt, 100_000, 32, 'sha256'
   )
   const decipher = crypto.createDecipheriv('aes-256-cbc', derivedKey, iv)
