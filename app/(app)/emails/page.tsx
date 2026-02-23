@@ -2,6 +2,8 @@ import { Mail, Send } from 'lucide-react'
 import { getCampaigns } from '@/lib/brevo'
 import { EmailList } from '@/components/emails/EmailList'
 
+export const dynamic = 'force-dynamic'
+
 export default async function EmailsPage() {
   const campaigns = await getCampaigns()
 
