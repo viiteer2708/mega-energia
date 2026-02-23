@@ -149,9 +149,6 @@ function Section({
         <div className="flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-primary/70" />
           <span className="text-sm font-semibold text-foreground">{section.name}</span>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            {section.files.length} archivo{section.files.length !== 1 ? 's' : ''}
-          </span>
         </div>
         {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </button>
@@ -376,9 +373,6 @@ export function DropboxMateriales({ rootFiles, sections }: DropboxMaterialesProp
                   <div className="flex items-center gap-2 bg-card/80 px-4 py-3">
                     <FolderOpen className="h-4 w-4 text-primary/70" />
                     <span className="text-sm font-semibold text-foreground">GENERAL</span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {rootFiles.length} archivos
-                    </span>
                   </div>
                   <div className="border-t border-border p-3 space-y-2 bg-background/30">
                     {rootFiles.map(f => <FileRow key={f.id} file={f} />)}
@@ -403,9 +397,6 @@ export function DropboxMateriales({ rootFiles, sections }: DropboxMaterialesProp
               {/* Subfolders grid */}
               {currentLevel.subfolders.length > 0 && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2 px-1">
-                    {currentLevel.subfolders.length} carpeta{currentLevel.subfolders.length !== 1 ? 's' : ''}
-                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {currentLevel.subfolders.map(sf => (
                       <SubfolderCard
@@ -421,11 +412,6 @@ export function DropboxMateriales({ rootFiles, sections }: DropboxMaterialesProp
               {/* Files list */}
               {currentLevel.files.length > 0 && (
                 <div className="space-y-2">
-                  {currentLevel.subfolders.length > 0 && (
-                    <p className="text-xs text-muted-foreground px-1">
-                      {currentLevel.files.length} archivo{currentLevel.files.length !== 1 ? 's' : ''}
-                    </p>
-                  )}
                   {currentLevel.files.map(f => <FileRow key={f.id} file={f} />)}
                 </div>
               )}

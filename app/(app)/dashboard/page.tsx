@@ -86,13 +86,14 @@ export default async function DashboardPage() {
           value={`${kpis.wallet.toLocaleString('es-ES')} €`}
           icon={Wallet}
           accentColor="purple"
+          subtitle="enero - diciembre 2026"
         />
         <KPICard
           title="Wallet Family"
           value={`${kpis.wallet_family.toLocaleString('es-ES')} €`}
           icon={Users}
           accentColor="red"
-          subtitle="equipo asignado"
+          subtitle="enero - diciembre 2026"
         />
       </div>
 
