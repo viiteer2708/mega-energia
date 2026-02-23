@@ -2,12 +2,11 @@
 
 import {
   MapPin, User, Building2, Zap, Flame, Activity,
-  Calendar, TrendingDown, ChevronRight, Copy, Check,
+  Calendar, Copy, Check,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { CUPSConsumoChart } from './CUPSConsumoChart'
 import { cn } from '@/lib/utils'
 import type { PuntoSuministro } from '@/lib/types'
@@ -94,22 +93,12 @@ export function CUPSResult({ punto }: CUPSResultProps) {
               </div>
             </div>
 
-            {/* Ahorro estimado */}
-            <div className="flex flex-col items-end rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-right">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">
-                Ahorro estimado
-              </span>
-              <span className="text-2xl font-bold text-emerald-400">
-                {punto.ahorro_estimado_anual.toLocaleString('es-ES')} €
-              </span>
-              <span className="text-[10px] text-emerald-400/70">al año con GRUPO NEW ENERGY</span>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 3-col grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* 2-col grid */}
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Contrato actual */}
         <Card className="border-border/50 bg-card">
           <CardHeader className="pb-2 pt-4 px-4">
@@ -161,41 +150,6 @@ export function CUPSResult({ punto }: CUPSResultProps) {
           </CardContent>
         </Card>
 
-        {/* Tarifa GNE recomendada */}
-        <Card className="border-border/50 bg-card border-primary/20">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide">
-              <TrendingDown className="h-3.5 w-3.5" />
-              Oferta GRUPO NEW ENERGY
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <p className="text-sm font-semibold text-foreground mb-3">
-              {punto.tarifa_gne_recomendada}
-            </p>
-            <div className="space-y-2">
-              {punto.precios_gne.map((p) => (
-                <div key={p.periodo} className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-muted-foreground">{p.periodo}</span>
-                  <span className="text-xs font-semibold text-primary font-mono">
-                    {p.precio.toFixed(3)} €/kWh
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Separator className="my-3 opacity-50" />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Ahorro anual</span>
-              <span className="text-sm font-bold text-emerald-400">
-                +{punto.ahorro_estimado_anual.toLocaleString('es-ES')} €
-              </span>
-            </div>
-            <button className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors">
-              Generar propuesta
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Consumo chart */}

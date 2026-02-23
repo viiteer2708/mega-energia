@@ -7,33 +7,9 @@ import { CUPSResult } from '@/components/cups/CUPSResult'
 import { CUPSRecientes } from '@/components/cups/CUPSRecientes'
 import type { PuntoSuministro, CUPSBusquedaReciente } from '@/lib/types'
 
-// ── GNE reference prices per tariff ──────────────────────────────────────
-
-import type { PeriodoTarifa } from '@/lib/types'
-
-const GNE_PRECIOS: Record<string, { periodo: PeriodoTarifa; precio: number }[]> = {
-  '2.0TD':  [{ periodo: 'P1', precio: 0.128 }, { periodo: 'P2', precio: 0.094 }, { periodo: 'P3', precio: 0.062 }],
-  '3.0TD':  [{ periodo: 'P1', precio: 0.142 }, { periodo: 'P2', precio: 0.098 }, { periodo: 'P3', precio: 0.068 },
-             { periodo: 'P4', precio: 0.058 }, { periodo: 'P5', precio: 0.052 }, { periodo: 'P6', precio: 0.048 }],
-  'RL.1':   [{ periodo: 'P1', precio: 0.055 }],
-  'RL.2':   [{ periodo: 'P1', precio: 0.068 }],
-  'default':[{ periodo: 'P1', precio: 0.120 }],
-}
-
-function getGnePrecios(tarifa: string | null) {
-  if (!tarifa) return GNE_PRECIOS['default']
-  const key = Object.keys(GNE_PRECIOS).find(k => k !== 'default' && tarifa.toUpperCase().includes(k))
-  return key ? GNE_PRECIOS[key] : GNE_PRECIOS['default']
-}
-
 function inferTipo(tarifa: string | null): 'electricidad' | 'gas' {
   if (!tarifa) return 'electricidad'
   return /^RL|^G[0-9]|gas/i.test(tarifa) ? 'gas' : 'electricidad'
-}
-
-function calcAhorro(consumoAnual: number, gnePrecios: { precio: number }[]): number {
-  const avgGne = gnePrecios.reduce((s, p) => s + p.precio, 0) / gnePrecios.length
-  return Math.round(Math.max(0, (0.19 - avgGne) * consumoAnual))
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -60,9 +36,7 @@ export default function CUPSPage() {
 
       const tarifa       = data.tarifa ?? 'No disponible'
       const tipo         = inferTipo(data.tarifa)
-      const gnePrecios  = getGnePrecios(data.tarifa)
       const consumoAnual = data.consumoAnual ?? 0
-      const ahorro       = consumoAnual ? calcAhorro(consumoAnual, gnePrecios) : 0
 
       const potencias = ((data.potencias ?? []) as { periodo: string; potencia: number }[]).map(p => ({
         periodo: p.periodo as 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6',
@@ -86,9 +60,9 @@ export default function CUPSPage() {
         consumo_anual_kwh:       consumoAnual,
         consumo_mensual:         data.consumoMensual ?? [],
         ultima_lectura:          new Date().toISOString().split('T')[0],
-        ahorro_estimado_anual:   ahorro,
-        tarifa_gne_recomendada: tipo === 'gas' ? `Gas GNE ${tarifa}` : `GNE ${tarifa}`,
-        precios_gne:            gnePrecios,
+        ahorro_estimado_anual:   0,
+        tarifa_gne_recomendada:  '',
+        precios_gne:             [],
       }
 
       setResultado(punto)
