@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { adminClient } from '@/lib/supabase/admin'
+import { getAdminClient } from '@/lib/supabase/admin'
 import { CREATABLE_ROLES } from '@/lib/types'
 import type { Role, UserListItem } from '@/lib/types'
 
@@ -50,7 +50,9 @@ export async function createUser(formData: FormData) {
     redirect('/usuarios?error=rol_no_permitido')
   }
 
-  const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+  const admin = getAdminClient()
+
+  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -61,7 +63,7 @@ export async function createUser(formData: FormData) {
     redirect('/usuarios?error=creacion_fallida')
   }
 
-  await adminClient
+  await admin
     .from('profiles')
     .update({
       full_name: fullName,
