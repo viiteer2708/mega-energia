@@ -31,7 +31,11 @@ async function getAccessToken(): Promise<string | null> {
   const clientSecret = process.env.DROPBOX_APP_SECRET
 
   if (!refreshToken || !clientId || !clientSecret) {
-    console.error('[Dropbox] Faltan variables de entorno DROPBOX_*')
+    console.error('[Dropbox] Variables faltantes:', {
+      DROPBOX_REFRESH_TOKEN: !!refreshToken,
+      DROPBOX_APP_KEY: !!clientId,
+      DROPBOX_APP_SECRET: !!clientSecret,
+    })
     return null
   }
 
