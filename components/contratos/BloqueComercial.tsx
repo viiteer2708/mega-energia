@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Building2, Package, User, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Product, UserProfile } from '@/lib/types'
+import type { Product, UserProfile, AssignableUser } from '@/lib/types'
 
 const selectClass =
   'flex h-10 w-full rounded-md border border-amber-500/60 bg-background px-3 py-2 text-sm text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
@@ -36,11 +36,23 @@ interface BloqueComercialProps {
   onComercializadoraChange: (v: string) => void
   onProductChange: (id: number | null) => void
   onObservacionesChange: (v: string) => void
+  // Selector de propietario (ADMIN/BO)
+  showOwnerSelector?: boolean
+  owners?: AssignableUser[]
+  ownerId?: string
+  onOwnerChange?: (id: string) => void
+  // Selector de operador (ADMIN/BO)
+  showOperadorSelector?: boolean
+  operadores?: AssignableUser[]
+  operadorId?: string
+  onOperadorChange?: (id: string) => void
 }
 
 export function BloqueComercial({
   products, user, disabled, comercializadora, productId, observaciones,
   onComercializadoraChange, onProductChange, onObservacionesChange,
+  showOwnerSelector, owners, ownerId, onOwnerChange,
+  showOperadorSelector, operadores, operadorId, onOperadorChange,
 }: BloqueComercialProps) {
   const [expanded, setExpanded] = useState(false)
 
@@ -58,9 +70,22 @@ export function BloqueComercial({
     )}>
       {/* ── Desktop: inline layout ── */}
       <div className="hidden sm:flex flex-wrap items-center gap-3 px-4 py-2.5">
-        <User className="h-3.5 w-3.5 text-amber-400" />
-        <span className="text-xs font-semibold text-amber-400">Comercial:</span>
-        <span className="text-xs font-medium text-foreground">{user.full_name}</span>
+        {showOwnerSelector && owners && onOwnerChange ? (
+          <div className="flex items-center gap-2">
+            <User className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-xs font-semibold text-amber-400">Propietario:</span>
+            <select value={ownerId ?? user.id} onChange={(e) => onOwnerChange(e.target.value)}
+              disabled={disabled} className="flex h-8 rounded-md border border-amber-500/60 bg-background px-2 py-1 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+              {owners.map(o => <option key={o.id} value={o.id}>{o.full_name} ({o.role})</option>)}
+            </select>
+          </div>
+        ) : (
+          <>
+            <User className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-xs font-semibold text-amber-400">Comercial:</span>
+            <span className="text-xs font-medium text-foreground">{user.full_name}</span>
+          </>
+        )}
 
         <div className="flex items-center gap-2">
           <Building2 className="h-3.5 w-3.5 text-amber-400" />
@@ -87,6 +112,18 @@ export function BloqueComercial({
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
+
+        {showOperadorSelector && operadores && onOperadorChange && (
+          <div className="flex items-center gap-2">
+            <User className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-xs font-semibold text-amber-400">Operador:</span>
+            <select value={operadorId ?? ''} onChange={(e) => onOperadorChange(e.target.value)}
+              disabled={disabled} className="flex h-8 rounded-md border border-amber-500/60 bg-background px-2 py-1 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+              <option value="">— Sin asignar —</option>
+              {operadores.map(o => <option key={o.id} value={o.id}>{o.full_name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* ── Mobile: tap-to-expand card ── */}
@@ -125,14 +162,26 @@ export function BloqueComercial({
           expanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
         )}>
           <div className="border-t border-amber-500/20 px-4 py-3 space-y-3">
-            {/* Comercial (read-only) */}
-            <div className="flex items-center gap-2 rounded-md bg-amber-500/5 px-3 py-2">
-              <User className="h-4 w-4 text-amber-400 shrink-0" />
+            {/* Propietario (selector o read-only) */}
+            {showOwnerSelector && owners && onOwnerChange ? (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/70">Comercial</p>
-                <p className="text-sm text-foreground">{user.full_name}</p>
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                  <User className="h-3.5 w-3.5" /> Propietario
+                </label>
+                <select value={ownerId ?? user.id} onChange={(e) => onOwnerChange(e.target.value)}
+                  disabled={disabled} className={selectClass}>
+                  {owners.map(o => <option key={o.id} value={o.id}>{o.full_name} ({o.role})</option>)}
+                </select>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-md bg-amber-500/5 px-3 py-2">
+                <User className="h-4 w-4 text-amber-400 shrink-0" />
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/70">Comercial</p>
+                  <p className="text-sm text-foreground">{user.full_name}</p>
+                </div>
+              </div>
+            )}
 
             {/* Comercializadora */}
             <div>
@@ -167,6 +216,20 @@ export function BloqueComercial({
                 disabled={disabled} placeholder="Notas opcionales..."
                 className={`${selectClass} border-amber-500/30`} />
             </div>
+
+            {/* Operador (solo ADMIN/BO) */}
+            {showOperadorSelector && operadores && onOperadorChange && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                  <User className="h-3.5 w-3.5" /> Operador
+                </label>
+                <select value={operadorId ?? ''} onChange={(e) => onOperadorChange(e.target.value)}
+                  disabled={disabled} className={selectClass}>
+                  <option value="">— Sin asignar —</option>
+                  {operadores.map(o => <option key={o.id} value={o.id}>{o.full_name}</option>)}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>

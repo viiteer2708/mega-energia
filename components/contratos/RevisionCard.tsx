@@ -4,10 +4,11 @@ import { ChevronDown, ChevronRight, Pencil, AlertCircle, FileText, Image as Imag
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { DOC_TIPO_LABELS } from '@/lib/types'
+import { isFieldVisible } from '@/lib/contract-permissions'
 import type { TitularData } from './BloqueTitular'
 import type { SuministroData } from './BloqueSuministro'
 import type { DocFile } from './DocumentUpload'
-import type { DocUploadMode } from '@/lib/types'
+import type { DocUploadMode, Role } from '@/lib/types'
 
 interface RevisionCardProps {
   titular: TitularData
@@ -15,9 +16,11 @@ interface RevisionCardProps {
   docs: { mode: DocUploadMode; files: DocFile[] }
   validationErrors: string[]
   onGoToStep: (step: number) => void
+  role: Role
+  isCreator: boolean
 }
 
-export function RevisionCard({ titular, suministro, docs, validationErrors, onGoToStep }: RevisionCardProps) {
+export function RevisionCard({ titular, suministro, docs, validationErrors, onGoToStep, role, isCreator }: RevisionCardProps) {
   return (
     <div className="space-y-4">
       {validationErrors.length > 0 && (
@@ -40,7 +43,9 @@ export function RevisionCard({ titular, suministro, docs, validationErrors, onGo
         <Row label="Teléfono 1" value={titular.telefono_1} required />
         {titular.telefono_2 && <Row label="Teléfono 2" value={titular.telefono_2} />}
         <Row label="Email" value={titular.email_titular} required />
-        {titular.cuenta_bancaria && <Row label="IBAN" value={titular.cuenta_bancaria} />}
+        {titular.cuenta_bancaria && isFieldVisible('cuenta_bancaria', role, isCreator) && (
+          <Row label="IBAN" value={titular.cuenta_bancaria} />
+        )}
         {titular.fecha_firma && <Row label="Fecha firma" value={titular.fecha_firma} />}
       </Section>
 

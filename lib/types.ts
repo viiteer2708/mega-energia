@@ -419,6 +419,8 @@ export interface Contract {
   // Devolución
   devolucion_motivo: string | null
   campos_a_corregir: string[] | null
+  // Soft-delete
+  deleted_at: string | null
   // Auto-guardado
   draft_data: Record<string, unknown> | null
   // Meta
@@ -528,6 +530,7 @@ export interface ContractDetailResponse {
   documents: ContractDocument[]
   state_log: ContractStateLog[]
   editable_fields: string[]
+  visible_fields: string[]
   allowed_transitions: ContractEstado[]
 }
 

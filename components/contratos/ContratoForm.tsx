@@ -13,7 +13,7 @@ import { RevisionCard } from '@/components/contratos/RevisionCard'
 import { DuplicateWarning } from '@/components/contratos/DuplicateWarning'
 import { createContract, saveDraft, changeState, uploadDocument } from '@/app/(app)/contratos/actions'
 import { isValidDNI, isValidCUPS, isValidPhone, isValidEmail } from '@/lib/validations/validators'
-import type { UserProfile, Product, ContractEstado, DocUploadMode } from '@/lib/types'
+import type { UserProfile, Product, ContractEstado, DocUploadMode, AssignableUser } from '@/lib/types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,8 +24,10 @@ interface ContratoFormProps {
   contractId?: string
   defaultValues?: Record<string, unknown>
   editableFields?: string[]
+  visibleFields?: string[]
   devueltoMotivo?: string | null
   devueltoCampos?: string[] | null
+  assignableUsers?: AssignableUser[]
 }
 
 const STEP_LABELS = ['Titular', 'Suministro', 'Docs', 'Revisión']
@@ -45,7 +47,8 @@ const emptySuministro: SuministroData = {
 
 export function ContratoForm({
   mode, user, products, contractId, defaultValues,
-  editableFields, devueltoMotivo, devueltoCampos,
+  editableFields, visibleFields, devueltoMotivo, devueltoCampos,
+  assignableUsers,
 }: ContratoFormProps) {
   const router = useRouter()
 
@@ -61,6 +64,13 @@ export function ContratoForm({
   const [titular, setTitular] = useState<TitularData>(emptyTitular)
   const [suministro, setSuministro] = useState<SuministroData>(emptySuministro)
   const [docs, setDocs] = useState<{ mode: DocUploadMode; files: DocFile[] }>({ mode: 'single', files: [] })
+  const [ownerId, setOwnerId] = useState(user.id)
+  const [operadorId, setOperadorId] = useState('')
+
+  // ADMIN/BO flags
+  const isAdminOrBo = user.role === 'ADMIN' || user.role === 'BACKOFFICE'
+  const showOwnerSelector = isAdminOrBo && !!assignableUsers?.length
+  const showOperadorSelector = isAdminOrBo && !!assignableUsers?.length
 
   // Refs for validation
   const titularRef = useRef<BloqueTitularRef>(null)
@@ -134,7 +144,9 @@ export function ContratoForm({
   const collectFormData = useCallback(() => ({
     ...titular, ...suministro, comercializadora, product_id: productId, observaciones,
     doc_upload_mode: docs.mode,
-  }), [titular, suministro, comercializadora, productId, observaciones, docs.mode])
+    ...(showOwnerSelector ? { owner_id: ownerId } : {}),
+    ...(showOperadorSelector && operadorId ? { operador_id: operadorId } : {}),
+  }), [titular, suministro, comercializadora, productId, observaciones, docs.mode, ownerId, operadorId, showOwnerSelector, showOperadorSelector])
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true)
@@ -143,7 +155,7 @@ export function ContratoForm({
     if (!createdId) {
       // First save — create the contract
       const fd = new FormData()
-      fd.set('owner_id', user.id)
+      fd.set('owner_id', showOwnerSelector ? ownerId : user.id)
       const data = collectFormData()
       for (const [k, v] of Object.entries(data)) {
         if (v !== null && v !== undefined) fd.set(k, String(v))
@@ -196,7 +208,7 @@ export function ContratoForm({
     setSubmitting(true)
     if (!createdId) {
       const fd = new FormData()
-      fd.set('owner_id', user.id)
+      fd.set('owner_id', showOwnerSelector ? ownerId : user.id)
       const data = collectFormData()
       for (const [k, v] of Object.entries(data)) {
         if (v !== null && v !== undefined) fd.set(k, String(v))
@@ -284,7 +296,11 @@ export function ContratoForm({
       <BloqueComercial products={products} user={user} comercializadora={comercializadora}
         productId={productId} observaciones={observaciones}
         onComercializadoraChange={setComercializadora} onProductChange={setProductId}
-        onObservacionesChange={setObservaciones} />
+        onObservacionesChange={setObservaciones}
+        showOwnerSelector={showOwnerSelector} owners={assignableUsers}
+        ownerId={ownerId} onOwnerChange={setOwnerId}
+        showOperadorSelector={showOperadorSelector} operadores={assignableUsers}
+        operadorId={operadorId} onOperadorChange={setOperadorId} />
 
       {/* Stepper */}
       <WizardStepper steps={steps} currentStep={step} onStepClick={(i) => goToStep(i)} progress={progress} />
@@ -331,7 +347,8 @@ export function ContratoForm({
             )}
             {step === 3 && (
               <RevisionCard titular={titular} suministro={suministro} docs={docs}
-                validationErrors={globalErrors} onGoToStep={(s) => goToStep(s)} />
+                validationErrors={globalErrors} onGoToStep={(s) => goToStep(s)}
+                role={user.role} isCreator={true} />
             )}
           </div>
         </div>

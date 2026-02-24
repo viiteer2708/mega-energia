@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { getEditableFields } from '@/lib/contract-permissions'
+import { getEditableFields, getVisibleFields } from '@/lib/contract-permissions'
 import {
   isValidDNI, isValidCIF, isValidIBAN,
   isValidCUPS, isValidPhone, isValidEmail,
@@ -13,6 +13,7 @@ import type {
   Role, ContractEstado, ContractListResult,
   ContractFilters, ContractDetailResponse, Contract,
   ContractCommission, ContractDocument, ContractStateLog, Product,
+  AssignableUser,
 } from '@/lib/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -40,6 +41,15 @@ async function getAuthProfile() {
   return profile ? { supabase, userId: user.id, role: profile.role as Role } : null
 }
 
+/** Elimina campos de gestión del contrato para roles non-ADMIN/BO */
+function stripGestionFields(contract: Contract): void {
+  contract.operador_id = null
+  contract.operador_name = undefined
+  contract.su_ref = null
+  contract.fecha_entrega_contrato = null
+  contract.fecha_cobro_distribuidor = null
+}
+
 // ── 1. getContracts ──────────────────────────────────────────────────────────
 
 export async function getContracts(filters: ContractFilters = {}): Promise<ContractListResult> {
@@ -49,13 +59,19 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
   const { supabase, role } = auth
   const page = filters.page ?? 1
   const offset = (page - 1) * PAGE_SIZE
+  const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
 
-  // Usamos la vista safe para non-ADMIN
+  // Usamos la vista safe para non-ADMIN (ya filtra deleted_at IS NULL)
   const table = role === 'ADMIN' ? 'contracts' : 'contracts_safe'
 
   let query = supabase
     .from(table)
     .select('*, owner:profiles!contracts_owner_id_fkey(full_name), product:products!contracts_product_id_fkey(name, type)', { count: 'exact' })
+
+  // ADMIN usa tabla directa, filtrar soft-deleted manualmente
+  if (role === 'ADMIN') {
+    query = query.is('deleted_at', null)
+  }
 
   // Filtros
   if (filters.search) {
@@ -97,10 +113,11 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
     } as unknown as Contract
   })
 
-  // Strip cuenta_bancaria para non-ADMIN/BO (RLS ya filtra lo demás)
-  if (role !== 'ADMIN' && role !== 'BACKOFFICE') {
+  // Strip campos sensibles según rol
+  if (!isAdminOrBo) {
     for (const c of contracts) {
       c.cuenta_bancaria = null
+      stripGestionFields(c)
     }
   }
 
@@ -121,12 +138,19 @@ export async function getContract(id: string): Promise<ContractDetailResponse | 
 
   const { supabase, userId, role } = auth
   const table = role === 'ADMIN' ? 'contracts' : 'contracts_safe'
+  const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
 
-  const { data: contract, error } = await supabase
+  let contractQuery = supabase
     .from(table)
     .select('*, owner:profiles!contracts_owner_id_fkey(full_name), operador:profiles!contracts_operador_id_fkey(full_name), product:products!contracts_product_id_fkey(name, type)')
     .eq('id', id)
-    .single()
+
+  // Filtrar soft-deleted para ADMIN (contracts_safe ya lo hace)
+  if (role === 'ADMIN') {
+    contractQuery = contractQuery.is('deleted_at', null)
+  }
+
+  const { data: contract, error } = await contractQuery.single()
 
   if (error || !contract) return null
 
@@ -142,10 +166,16 @@ export async function getContract(id: string): Promise<ContractDetailResponse | 
     product_type: product?.type as Contract['product_type'],
   }
 
-  // Strip cuenta_bancaria
   const isCreator = contractData.owner_id === userId
-  if (role !== 'ADMIN' && role !== 'BACKOFFICE' && !isCreator) {
+
+  // Strip cuenta_bancaria
+  if (!isAdminOrBo && !isCreator) {
     contractData.cuenta_bancaria = null
+  }
+
+  // Strip campos de gestión para non-ADMIN/BO
+  if (!isAdminOrBo) {
+    stripGestionFields(contractData)
   }
 
   // Cargar commissions, documents, state_log en paralelo
@@ -195,6 +225,7 @@ export async function getContract(id: string): Promise<ContractDetailResponse | 
     : (transitionsRes.data ?? []).map((r: Record<string, unknown>) => r.to_state as ContractEstado)
 
   const editable_fields = getEditableFields(contractData.estado, role, isCreator)
+  const visible_fields = getVisibleFields(role, isCreator)
 
   return {
     contract: contractData,
@@ -202,6 +233,7 @@ export async function getContract(id: string): Promise<ContractDetailResponse | 
     documents,
     state_log,
     editable_fields,
+    visible_fields,
     allowed_transitions,
   }
 }
@@ -236,9 +268,22 @@ export async function createContract(
     const auth = await getAuthProfile()
     if (!auth) redirect('/login')
 
-    const { supabase, userId } = auth
+    const { supabase, userId, role } = auth
+    const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
 
     const ownerId = (formData.get('owner_id') as string)?.trim() || userId
+
+    // Verificar jerarquía si owner_id ≠ self
+    if (ownerId !== userId && !isAdminOrBo) {
+      // Non-ADMIN/BO solo pueden crear para descendientes
+      const { data: isDesc } = await supabase.rpc('is_descendant_of', {
+        child_id: ownerId,
+        ancestor_id: userId,
+      })
+      if (!isDesc) {
+        return { ok: false, error: 'No tienes permiso para crear contratos para este usuario.' }
+      }
+    }
 
     const insertData: Record<string, unknown> = {
       owner_id: ownerId,
@@ -268,6 +313,12 @@ export async function createContract(
       email_titular: (formData.get('email_titular') as string)?.trim().toLowerCase() || null,
       cuenta_bancaria: (formData.get('cuenta_bancaria') as string)?.trim().toUpperCase().replace(/\s/g, '') || null,
       fecha_firma: (formData.get('fecha_firma') as string)?.trim() || null,
+    }
+
+    // Solo ADMIN/BO pueden establecer operador_id
+    if (isAdminOrBo) {
+      const operadorId = (formData.get('operador_id') as string)?.trim()
+      if (operadorId) insertData.operador_id = operadorId
     }
 
     const { data, error } = await supabase
@@ -310,6 +361,7 @@ export async function updateContract(
     if (!auth) redirect('/login')
 
     const { supabase, userId, role } = auth
+    const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
 
     // Obtener contrato para verificar permisos
     const { data: contract } = await supabase
@@ -361,6 +413,9 @@ export async function updateContract(
     }
 
     for (const field of allowed) {
+      // Guardia: non-ADMIN/BO no pueden escribir operador_id
+      if (!isAdminOrBo && field === 'operador_id') continue
+
       const raw = formData.get(field) as string | null
       if (raw !== null && fieldMap[field]) {
         updateData[field] = fieldMap[field](raw)
@@ -403,28 +458,49 @@ export async function changeState(
 
     const { supabase, userId, role } = auth
 
-    // Obtener estado actual
+    // Obtener estado actual (excluir soft-deleted)
     const { data: contract } = await supabase
       .from('contracts')
-      .select('estado, cups')
+      .select('estado, cups, deleted_at')
       .eq('id', id)
+      .is('deleted_at', null)
       .single()
 
     if (!contract) return { ok: false, error: 'Contrato no encontrado.' }
 
     const currentState = contract.estado as ContractEstado
 
-    // Validar transición (ADMIN bypass ya está en la función SQL)
+    // Validar transición y consultar requires_motivo/requires_campos
     if (role !== 'ADMIN') {
-      const { data: canDo } = await supabase
+      const { data: transition } = await supabase
         .from('state_transitions')
-        .select('id')
+        .select('id, requires_motivo, requires_campos')
         .eq('role', role)
         .eq('from_state', currentState)
         .eq('to_state', newState)
         .single()
 
-      if (!canDo) return { ok: false, error: 'Transición de estado no permitida.' }
+      if (!transition) return { ok: false, error: 'Transición de estado no permitida.' }
+
+      // Validar motivo obligatorio
+      if (transition.requires_motivo && !motivo?.trim()) {
+        return { ok: false, error: 'Se requiere un motivo para esta transición.' }
+      }
+      // Validar campos a corregir obligatorios
+      if (transition.requires_campos && (!camposDevueltos || camposDevueltos.length === 0)) {
+        return { ok: false, error: 'Se requiere indicar los campos a corregir.' }
+      }
+    } else {
+      // ADMIN: también validar motivo para devuelto y ko
+      if (newState === 'devuelto' && !motivo?.trim()) {
+        return { ok: false, error: 'Se requiere un motivo para devolver el contrato.' }
+      }
+      if (newState === 'devuelto' && (!camposDevueltos || camposDevueltos.length === 0)) {
+        return { ok: false, error: 'Se requiere indicar los campos a corregir.' }
+      }
+      if (newState === 'ko' && !motivo?.trim()) {
+        return { ok: false, error: 'Se requiere un motivo para marcar como KO.' }
+      }
     }
 
     // Si va a pendiente_validacion: detectar duplicados por CUPS
@@ -436,6 +512,7 @@ export async function changeState(
         .eq('cups', contract.cups)
         .eq('activo', true)
         .neq('id', id)
+        .is('deleted_at', null)
         .in('estado', ['pendiente_validacion', 'tramitado', 'pendiente_aceptacion', 'futura_activacion', 'pendiente_instalacion', 'ok'])
 
       if (dups && dups.length > 0) {
@@ -674,6 +751,183 @@ export async function getDevueltoCount(): Promise<number> {
     .from('contracts')
     .select('id', { count: 'exact', head: true })
     .eq('estado', 'devuelto')
+    .is('deleted_at', null)
 
   return count ?? 0
+}
+
+// ── 11. deleteContract (soft-delete) ─────────────────────────────────────────
+
+export async function deleteContract(id: string, motivo: string): Promise<ActionResult> {
+  try {
+    const auth = await getAuthProfile()
+    if (!auth) redirect('/login')
+
+    const { supabase, userId, role } = auth
+
+    if (role !== 'ADMIN') {
+      return { ok: false, error: 'Solo ADMIN puede eliminar contratos.' }
+    }
+
+    if (!motivo?.trim()) {
+      return { ok: false, error: 'Se requiere un motivo para eliminar el contrato.' }
+    }
+
+    // Verificar estado: solo borrador o ko
+    const { data: contract } = await supabase
+      .from('contracts')
+      .select('estado')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single()
+
+    if (!contract) return { ok: false, error: 'Contrato no encontrado.' }
+
+    const estado = contract.estado as ContractEstado
+    if (estado !== 'borrador' && estado !== 'ko') {
+      return { ok: false, error: 'Solo se pueden eliminar contratos en estado borrador o KO.' }
+    }
+
+    // Soft-delete
+    const { error } = await supabase
+      .from('contracts')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      console.error('[deleteContract]', error.message)
+      return { ok: false, error: `Error al eliminar: ${error.message}` }
+    }
+
+    // Auditoría
+    await supabase
+      .from('audit_log')
+      .insert({
+        contract_id: id,
+        user_id: userId,
+        action: 'soft_delete',
+        details: { motivo, estado_previo: estado },
+      })
+
+    return { ok: true }
+  } catch (err) {
+    if (isRedirectError(err)) throw err
+    console.error('[deleteContract]', err)
+    return { ok: false, error: 'Error inesperado al eliminar contrato.' }
+  }
+}
+
+// ── 12. getContractsExport (sin paginación, solo ADMIN/BO) ──────────────────
+
+export async function getContractsExport(filters: ContractFilters = {}): Promise<Contract[]> {
+  const auth = await getAuthProfile()
+  if (!auth) return []
+
+  const { supabase, role } = auth
+  const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
+
+  if (!isAdminOrBo) return []
+
+  const table = role === 'ADMIN' ? 'contracts' : 'contracts_safe'
+
+  let query = supabase
+    .from(table)
+    .select('*, owner:profiles!contracts_owner_id_fkey(full_name), product:products!contracts_product_id_fkey(name, type)')
+
+  if (role === 'ADMIN') {
+    query = query.is('deleted_at', null)
+  }
+
+  if (filters.search) {
+    const search = `%${filters.search}%`
+    query = query.or(`cups.ilike.${search},titular_contrato.ilike.${search},dni_firmante.ilike.${search}`)
+  }
+  if (filters.estado) {
+    query = query.eq('estado', filters.estado)
+  }
+  if (filters.product_type) {
+    query = query.eq('product.type', filters.product_type)
+  }
+  if (filters.fecha_desde) {
+    query = query.gte('fecha_alta', filters.fecha_desde)
+  }
+  if (filters.fecha_hasta) {
+    query = query.lte('fecha_alta', filters.fecha_hasta)
+  }
+
+  query = query.order('created_at', { ascending: false })
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[getContractsExport]', error.message)
+    return []
+  }
+
+  const contracts: Contract[] = (data ?? []).map((row: Record<string, unknown>) => {
+    const owner = row.owner as { full_name: string } | null
+    const product = row.product as { name: string; type: string } | null
+    return {
+      ...row,
+      owner_name: owner?.full_name ?? '',
+      product_name: product?.name ?? '',
+      product_type: product?.type as Contract['product_type'],
+      owner: undefined,
+      product: undefined,
+    } as unknown as Contract
+  })
+
+  // BO: strip commission fields (la vista ya los excluye, pero doble seguridad)
+  if (role === 'BACKOFFICE') {
+    for (const c of contracts) {
+      c.commission_gnew = 0
+      c.decomission_gnew = 0
+      c.beneficio = 0
+    }
+  }
+
+  return contracts
+}
+
+// ── 13. getAssignableUsers ───────────────────────────────────────────────────
+
+export async function getAssignableUsers(): Promise<AssignableUser[]> {
+  const auth = await getAuthProfile()
+  if (!auth) return []
+
+  const { supabase, userId, role } = auth
+  const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
+
+  if (isAdminOrBo) {
+    // ADMIN/BO: todos los usuarios
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, parent_id')
+      .order('full_name')
+
+    return (data ?? []).map(p => ({
+      id: p.id,
+      full_name: p.full_name,
+      role: p.role as Role,
+      parent_id: p.parent_id,
+    }))
+  }
+
+  // Otros roles: self + descendants
+  const { data: descendants } = await supabase.rpc('get_descendants', { root_id: userId })
+
+  const allIds = [userId, ...(descendants ?? [])]
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, role, parent_id')
+    .in('id', allIds)
+    .order('full_name')
+
+  return (data ?? []).map(p => ({
+    id: p.id,
+    full_name: p.full_name,
+    role: p.role as Role,
+    parent_id: p.parent_id,
+  }))
 }

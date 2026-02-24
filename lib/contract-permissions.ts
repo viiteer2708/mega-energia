@@ -120,6 +120,10 @@ const SENSITIVE_FIELDS: Record<string, (role: Role, isCreator: boolean) => boole
   commission_gnew: (role) => role === 'ADMIN',
   decomission_gnew: (role) => role === 'ADMIN',
   beneficio: (role) => role === 'ADMIN',
+  operador_id: (role) => role === 'ADMIN' || role === 'BACKOFFICE',
+  su_ref: (role) => role === 'ADMIN' || role === 'BACKOFFICE',
+  fecha_entrega_contrato: (role) => role === 'ADMIN' || role === 'BACKOFFICE',
+  fecha_cobro_distribuidor: (role) => role === 'ADMIN' || role === 'BACKOFFICE',
 }
 
 /**
@@ -133,4 +137,29 @@ export function isFieldVisible(
   const check = SENSITIVE_FIELDS[field]
   if (check) return check(role, isCreator)
   return true
+}
+
+// Todos los campos del contrato (para calcular visible_fields)
+const ALL_CONTRACT_FIELDS = [
+  // Bloque A
+  'owner_id', 'operador_id', 'campaign_id', 'product_id', 'su_ref', 'observaciones',
+  'activo', 'estado', 'fecha_alta', 'fecha_baja',
+  // Bloque B
+  ...FIELDS_B,
+  // Bloque C
+  ...FIELDS_C,
+  // Bloque D
+  'fecha_entrega_contrato', 'fecha_cobro_distribuidor',
+  // Bloque E.1
+  'commission_gnew', 'decomission_gnew', 'beneficio',
+  // Docs / devolución
+  'doc_upload_mode', 'devolucion_motivo', 'campos_a_corregir',
+  'draft_data', 'created_at', 'updated_at', 'deleted_at',
+]
+
+/**
+ * Devuelve la lista de campos visibles para el usuario según su rol y si es creador.
+ */
+export function getVisibleFields(role: Role, isCreator: boolean): string[] {
+  return ALL_CONTRACT_FIELDS.filter(f => isFieldVisible(f, role, isCreator))
 }

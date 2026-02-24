@@ -1,13 +1,18 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
-import { getProducts } from '../actions'
+import { getProducts, getAssignableUsers } from '../actions'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 
 export default async function NuevoContratoPage() {
   const user = await getSession()
   if (!user) redirect('/login')
 
-  const products = await getProducts()
+  const isAdminOrBo = user.role === 'ADMIN' || user.role === 'BACKOFFICE'
+
+  const [products, assignableUsers] = await Promise.all([
+    getProducts(),
+    isAdminOrBo ? getAssignableUsers() : Promise.resolve(undefined),
+  ])
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -16,6 +21,7 @@ export default async function NuevoContratoPage() {
         mode="create"
         user={user}
         products={products}
+        assignableUsers={assignableUsers}
       />
     </div>
   )
