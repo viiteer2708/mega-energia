@@ -348,7 +348,8 @@ export type ContractEstado =
   | 'baja'
   | 'aviso_baja'
 
-export type DocTipo = 'factura' | 'dni' | 'cif' | 'escrituras' | 'contrato_firmado'
+export type DocTipo = 'factura' | 'dni' | 'cif' | 'escrituras' | 'contrato_firmado' | 'documentacion_completa'
+export type DocUploadMode = 'single' | 'separate'
 export type PagoStatus = 'pendiente' | 'pagado' | 'anulado'
 export type ProductTipo = 'luz_hogar' | 'luz_empresa' | 'gas_hogar' | 'gas_empresa' | 'dual'
 
@@ -413,6 +414,8 @@ export interface Contract {
   commission_gnew: number
   decomission_gnew: number
   beneficio: number
+  // Documentación
+  doc_upload_mode: DocUploadMode | null
   // Devolución
   devolucion_motivo: string | null
   campos_a_corregir: string[] | null
@@ -577,4 +580,5 @@ export const DOC_TIPO_LABELS: Record<DocTipo, string> = {
   cif: 'CIF',
   escrituras: 'Escrituras',
   contrato_firmado: 'Contrato Firmado',
+  documentacion_completa: 'Documentación Completa',
 }

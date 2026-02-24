@@ -30,7 +30,8 @@ CREATE TYPE public.doc_tipo AS ENUM (
   'dni',
   'cif',
   'escrituras',
-  'contrato_firmado'
+  'contrato_firmado',
+  'documentacion_completa'
 );
 
 CREATE TYPE public.pago_status AS ENUM (
@@ -131,6 +132,9 @@ CREATE TABLE public.contracts (
   beneficio         NUMERIC(10,4) GENERATED ALWAYS AS (
     commission_gnew - decomission_gnew
   ) STORED,
+
+  -- ── Documentación ──
+  doc_upload_mode      TEXT CHECK (doc_upload_mode IN ('single', 'separate')),
 
   -- ── Devolución (campos a corregir + motivo) ──
   devolucion_motivo    TEXT,
@@ -240,7 +244,7 @@ SELECT
   titular_contrato, cif, nombre_firmante, dni_firmante,
   telefono_1, telefono_2, email_titular, cuenta_bancaria, fecha_firma,
   fecha_entrega_contrato, fecha_cobro_distribuidor,
-  devolucion_motivo, campos_a_corregir,
+  doc_upload_mode, devolucion_motivo, campos_a_corregir,
   draft_data, created_at, updated_at
 FROM public.contracts;
 

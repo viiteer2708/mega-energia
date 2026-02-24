@@ -1,19 +1,21 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, Send, Loader2, Clock, AlertTriangle } from 'lucide-react'
+import { Save, Send, Loader2, Clock, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { WizardStepper, type StepStatus } from '@/components/contratos/WizardStepper'
 import { BloqueComercial } from '@/components/contratos/BloqueComercial'
-import { BloqueSuministro } from '@/components/contratos/BloqueSuministro'
-import { BloqueTitular } from '@/components/contratos/BloqueTitular'
-import { DocumentUpload } from '@/components/contratos/DocumentUpload'
+import { BloqueTitular, type BloqueTitularRef, type TitularData } from '@/components/contratos/BloqueTitular'
+import { BloqueSuministro, type BloqueSuministroRef, type SuministroData } from '@/components/contratos/BloqueSuministro'
+import { DocumentUpload, type DocumentUploadRef, type DocFile } from '@/components/contratos/DocumentUpload'
+import { RevisionCard } from '@/components/contratos/RevisionCard'
 import { DuplicateWarning } from '@/components/contratos/DuplicateWarning'
-import { createContract, saveDraft, changeState } from '@/app/(app)/contratos/actions'
-import {
-  isValidDNI, isValidCUPS, isValidPhone, isValidEmail,
-} from '@/lib/validations/validators'
-import type { UserProfile, Product, ContractDocument, ContractEstado } from '@/lib/types'
+import { createContract, saveDraft, changeState, uploadDocument } from '@/app/(app)/contratos/actions'
+import { isValidDNI, isValidCUPS, isValidPhone, isValidEmail } from '@/lib/validations/validators'
+import type { UserProfile, Product, ContractEstado, DocUploadMode } from '@/lib/types'
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface ContratoFormProps {
   mode: 'create' | 'edit'
@@ -26,146 +28,242 @@ interface ContratoFormProps {
   devueltoCampos?: string[] | null
 }
 
-interface FormResult {
-  ok: boolean
-  error?: string
-  id?: string
-  duplicates?: Array<{ id: string; cups: string; titular: string; estado: ContractEstado }>
+const STEP_LABELS = ['Titular', 'Suministro', 'Docs', 'Revisión']
+
+const emptyTitular: TitularData = {
+  titular_contrato: '', es_empresa: false, cif: '', nombre_firmante: '',
+  dni_firmante: '', telefono_1: '', telefono_2: '', email_titular: '',
+  cuenta_bancaria: '', fecha_firma: '',
+}
+const emptySuministro: SuministroData = {
+  cups: '', tarifa: '', potencia_1: '', potencia_2: '', potencia_3: '',
+  potencia_4: '', potencia_5: '', potencia_6: '', consumo_anual: '',
+  direccion: '', codigo_postal: '', poblacion: '', provincia: '', datos_manuales: false,
 }
 
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function ContratoForm({
-  mode,
-  user,
-  products,
-  contractId,
-  defaultValues,
-  editableFields,
-  devueltoMotivo,
-  devueltoCampos,
+  mode, user, products, contractId, defaultValues,
+  editableFields, devueltoMotivo, devueltoCampos,
 }: ContratoFormProps) {
   const router = useRouter()
-  const formRef = useRef<HTMLFormElement>(null)
-  const [documents, setDocuments] = useState<ContractDocument[]>([])
+
+  // Step state
+  const [step, setStep] = useState(0)
+  const [direction, setDirection] = useState<'left' | 'right'>('right')
+  const [animating, setAnimating] = useState(false)
+
+  // Data state
+  const [productId, setProductId] = useState<number | null>(null)
+  const [observaciones, setObservaciones] = useState('')
+  const [titular, setTitular] = useState<TitularData>(emptyTitular)
+  const [suministro, setSuministro] = useState<SuministroData>(emptySuministro)
+  const [docs, setDocs] = useState<{ mode: DocUploadMode; files: DocFile[] }>({ mode: 'single', files: [] })
+
+  // Refs for validation
+  const titularRef = useRef<BloqueTitularRef>(null)
+  const suministroRef = useRef<BloqueSuministroRef>(null)
+  const docsRef = useRef<DocumentUploadRef>(null)
+
+  // UI state
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [duplicates, setDuplicates] = useState<FormResult['duplicates']>(undefined)
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [submittingValidation, setSubmittingValidation] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [duplicates, setDuplicates] = useState<Array<{ id: string; cups: string; titular: string; estado: ContractEstado }>>()
+  const [globalErrors, setGlobalErrors] = useState<string[]>([])
+  const [createdId, setCreatedId] = useState<string | null>(contractId ?? null)
 
-  const [result, formAction, isPending] = useActionState<FormResult | null, FormData>(
-    createContract,
-    null
-  )
+  // Swipe
+  const touchStartX = useRef(0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  // Redirigir tras crear exitosamente
-  useEffect(() => {
-    if (result?.ok && result.id) {
-      router.push(`/contratos`)
+  // ── Step navigation ─────────────────────────────────────────────────────
+
+  const goToStep = (target: number, validate = false) => {
+    if (target === step || target < 0 || target > 3 || animating) return
+    // Validate current step if advancing with "Siguiente"
+    if (validate && target > step) {
+      if (!validateCurrentStep()) return
     }
-  }, [result, router])
-
-  // Auto-guardado cada 30s
-  const autoSave = useCallback(async () => {
-    if (!contractId || !formRef.current) return
-
-    const fd = new FormData(formRef.current)
-    const draft: Record<string, unknown> = {}
-    fd.forEach((value, key) => {
-      if (key !== 'owner_id') draft[key] = value
-    })
-
-    await saveDraft(contractId, draft)
-    setLastSaved(new Date())
-  }, [contractId])
-
-  useEffect(() => {
-    if (mode !== 'create' || !contractId) return
-    const interval = setInterval(autoSave, 30000)
-    return () => clearInterval(interval)
-  }, [mode, contractId, autoSave])
-
-  // Calcular progreso
-  const requiredFields = [
-    'cups', 'titular_contrato', 'nombre_firmante',
-    'dni_firmante', 'telefono_1', 'email_titular',
-  ]
-
-  const getProgress = () => {
-    if (!formRef.current) return 0
-    const fd = new FormData(formRef.current)
-    let filled = 0
-    for (const field of requiredFields) {
-      if (fd.get(field)?.toString().trim()) filled++
-    }
-    return Math.round((filled / requiredFields.length) * 100)
+    setDirection(target > step ? 'right' : 'left')
+    setAnimating(true)
+    setTimeout(() => { setStep(target); setAnimating(false) }, 300)
   }
 
-  const [progress, setProgress] = useState(0)
+  const validateCurrentStep = (): boolean => {
+    if (step === 0) return titularRef.current?.validate() ?? true
+    if (step === 1) return suministroRef.current?.validate() ?? true
+    if (step === 2) return docsRef.current?.validate() ?? true
+    return true
+  }
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(getProgress())
-    }, 2000)
-    return () => clearInterval(interval)
-  })
+  // ── Step status for stepper ─────────────────────────────────────────────
 
-  // Validar antes de enviar a validación
-  const handleSendToValidation = async () => {
-    if (!contractId || !formRef.current) return
-
-    const fd = new FormData(formRef.current)
-    const errors: string[] = []
-
-    const cups = fd.get('cups')?.toString().trim()
-    if (!cups) errors.push('CUPS es obligatorio')
-    else if (!isValidCUPS(cups)) errors.push('CUPS no tiene formato válido')
-
-    if (!fd.get('titular_contrato')?.toString().trim()) errors.push('Titular del contrato es obligatorio')
-    if (!fd.get('nombre_firmante')?.toString().trim()) errors.push('Nombre del firmante es obligatorio')
-
-    const dni = fd.get('dni_firmante')?.toString().trim()
-    if (!dni) errors.push('DNI del firmante es obligatorio')
-    else if (!isValidDNI(dni)) errors.push('DNI del firmante no es válido')
-
-    const tel = fd.get('telefono_1')?.toString().trim()
-    if (!tel) errors.push('Teléfono 1 es obligatorio')
-    else if (!isValidPhone(tel)) errors.push('Teléfono 1 no es válido')
-
-    const email = fd.get('email_titular')?.toString().trim()
-    if (!email) errors.push('Email del titular es obligatorio')
-    else if (!isValidEmail(email)) errors.push('Email del titular no es válido')
-
-    if (errors.length > 0) {
-      setValidationErrors(errors)
-      return
+  const getStepStatus = (idx: number): StepStatus => {
+    if (idx === step) return 'in_progress'
+    if (idx === 0) {
+      const hasRequired = titular.titular_contrato && titular.nombre_firmante && titular.dni_firmante && titular.telefono_1 && titular.email_titular
+      if (!titular.titular_contrato && !titular.nombre_firmante) return 'pending'
+      return hasRequired ? 'complete' : 'in_progress'
     }
+    if (idx === 1) {
+      if (!suministro.cups) return 'pending'
+      return isValidCUPS(suministro.cups) ? 'complete' : 'in_progress'
+    }
+    if (idx === 2) {
+      if (docs.files.length === 0) return 'pending'
+      return 'complete'
+    }
+    return 'pending'
+  }
 
-    setValidationErrors([])
-    setSubmittingValidation(true)
+  const progress = (() => {
+    let total = 0
+    const checks = [
+      !!titular.titular_contrato, !!titular.nombre_firmante, !!titular.dni_firmante,
+      !!titular.telefono_1, !!titular.email_titular, !!suministro.cups, docs.files.length > 0,
+    ]
+    for (const c of checks) if (c) total++
+    return Math.round((total / checks.length) * 100)
+  })()
 
-    const res = await changeState(contractId, 'pendiente_validacion')
+  // ── Auto-save ──────────────────────────────────────────────────────────
 
-    setSubmittingValidation(false)
+  const collectFormData = useCallback(() => ({
+    ...titular, ...suministro, product_id: productId, observaciones,
+    doc_upload_mode: docs.mode,
+  }), [titular, suministro, productId, observaciones, docs.mode])
 
-    if (!res.ok) {
-      if (res.duplicates) {
-        setDuplicates(res.duplicates)
-      } else {
-        setValidationErrors([res.error ?? 'Error desconocido'])
+  const handleSaveDraft = useCallback(async () => {
+    setSaving(true)
+    setGlobalErrors([])
+
+    if (!createdId) {
+      // First save — create the contract
+      const fd = new FormData()
+      fd.set('owner_id', user.id)
+      const data = collectFormData()
+      for (const [k, v] of Object.entries(data)) {
+        if (v !== null && v !== undefined) fd.set(k, String(v))
       }
-      return
+      const result = await createContract(null, fd)
+      if (result?.ok && result.id) {
+        setCreatedId(result.id)
+        setLastSaved(new Date())
+      } else {
+        setGlobalErrors([result?.error ?? 'Error al guardar.'])
+      }
+    } else {
+      await saveDraft(createdId, collectFormData())
+      setLastSaved(new Date())
     }
+    setSaving(false)
+  }, [createdId, collectFormData, user.id])
 
-    if (res.duplicates && res.duplicates.length > 0) {
-      setDuplicates(res.duplicates)
-      return
+  // Auto-save every 30s
+  useEffect(() => {
+    if (!createdId) return
+    const interval = setInterval(async () => {
+      await saveDraft(createdId, collectFormData())
+      setLastSaved(new Date())
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [createdId, collectFormData])
+
+  // ── Submit for validation ──────────────────────────────────────────────
+
+  const handleSubmitValidation = async () => {
+    // Full validation
+    const errors: string[] = []
+    if (!titular.titular_contrato.trim()) errors.push('Titular del contrato es obligatorio')
+    if (!titular.nombre_firmante.trim()) errors.push('Nombre del firmante es obligatorio')
+    if (!titular.dni_firmante.trim()) errors.push('DNI del firmante es obligatorio')
+    else if (!isValidDNI(titular.dni_firmante)) errors.push('DNI del firmante no es válido')
+    if (!titular.telefono_1.trim()) errors.push('Teléfono 1 es obligatorio')
+    else if (!isValidPhone(titular.telefono_1)) errors.push('Teléfono 1 no es válido')
+    if (!titular.email_titular.trim()) errors.push('Email del titular es obligatorio')
+    else if (!isValidEmail(titular.email_titular)) errors.push('Email del titular no es válido')
+    if (!suministro.cups.trim()) errors.push('CUPS es obligatorio')
+    else if (!isValidCUPS(suministro.cups)) errors.push('CUPS no tiene formato válido')
+    if (docs.files.length === 0) errors.push('Se necesita al menos un documento')
+
+    if (errors.length > 0) { setGlobalErrors(errors); return }
+    setGlobalErrors([])
+
+    // Ensure saved first
+    setSubmitting(true)
+    if (!createdId) {
+      const fd = new FormData()
+      fd.set('owner_id', user.id)
+      const data = collectFormData()
+      for (const [k, v] of Object.entries(data)) {
+        if (v !== null && v !== undefined) fd.set(k, String(v))
+      }
+      const result = await createContract(null, fd)
+      if (!result?.ok || !result.id) {
+        setGlobalErrors([result?.error ?? 'Error al crear contrato.'])
+        setSubmitting(false); return
+      }
+      setCreatedId(result.id)
+
+      // Upload files
+      for (const doc of docs.files) {
+        const fd2 = new FormData()
+        fd2.set('contract_id', result.id)
+        fd2.set('tipo_doc', doc.tipo_doc)
+        fd2.set('file', doc.file)
+        await uploadDocument(fd2)
+      }
+
+      // Change state
+      const stateRes = await changeState(result.id, 'pendiente_validacion')
+      if (!stateRes.ok) {
+        if (stateRes.duplicates) { setDuplicates(stateRes.duplicates) }
+        else { setGlobalErrors([stateRes.error ?? 'Error']) }
+        setSubmitting(false); return
+      }
+      if (stateRes.duplicates?.length) { setDuplicates(stateRes.duplicates); setSubmitting(false); return }
+    } else {
+      // Update + upload + state change
+      await saveDraft(createdId, collectFormData())
+      for (const doc of docs.files) {
+        const fd2 = new FormData()
+        fd2.set('contract_id', createdId)
+        fd2.set('tipo_doc', doc.tipo_doc)
+        fd2.set('file', doc.file)
+        await uploadDocument(fd2)
+      }
+      const stateRes = await changeState(createdId, 'pendiente_validacion')
+      if (!stateRes.ok) {
+        if (stateRes.duplicates) { setDuplicates(stateRes.duplicates) }
+        else { setGlobalErrors([stateRes.error ?? 'Error']) }
+        setSubmitting(false); return
+      }
+      if (stateRes.duplicates?.length) { setDuplicates(stateRes.duplicates); setSubmitting(false); return }
     }
-
+    setSubmitting(false)
     router.push('/contratos')
   }
 
+  // ── Swipe handling ─────────────────────────────────────────────────────
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(dx) > 60) {
+      if (dx < 0 && step < 3) goToStep(step + 1)
+      if (dx > 0 && step > 0) goToStep(step - 1)
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
+
+  const steps = STEP_LABELS.map((label, i) => ({ label, status: getStepStatus(i) }))
+
   return (
-    <>
-      {/* Banner de devolución */}
+    <div className="mx-auto max-w-3xl">
+      {/* Devuelto banner */}
       {devueltoMotivo && (
         <div className="mb-4 rounded-lg border border-orange-500/30 bg-orange-500/10 p-4">
           <div className="flex items-start gap-3">
@@ -173,139 +271,115 @@ export function ContratoForm({
             <div>
               <h4 className="font-semibold text-orange-400">Contrato devuelto</h4>
               <p className="mt-1 text-sm text-orange-300/80">{devueltoMotivo}</p>
-              {devueltoCampos && devueltoCampos.length > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Campos a corregir: {devueltoCampos.join(', ')}
-                </p>
-              )}
+              {devueltoCampos?.length ? (
+                <p className="mt-1 text-xs text-muted-foreground">Campos a corregir: {devueltoCampos.join(', ')}</p>
+              ) : null}
             </div>
           </div>
         </div>
       )}
 
-      {/* Barra de progreso */}
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-2 flex-1 rounded-full bg-border overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <span className="text-xs text-muted-foreground">{progress}%</span>
-        {lastSaved && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            Guardado {formatTimeAgo(lastSaved)}
-          </span>
-        )}
-      </div>
+      {/* Bloque A — cabecera fija */}
+      <BloqueComercial products={products} user={user} productId={productId}
+        observaciones={observaciones} onProductChange={setProductId} onObservacionesChange={setObservaciones} />
 
-      {/* Errores de validación */}
-      {validationErrors.length > 0 && (
+      {/* Stepper */}
+      <WizardStepper steps={steps} currentStep={step} onStepClick={(i) => goToStep(i)} progress={progress} />
+
+      {/* Auto-save indicator */}
+      {lastSaved && (
+        <div className="mb-3 flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" /> Guardado {formatTimeAgo(lastSaved)}
+        </div>
+      )}
+
+      {/* Global errors */}
+      {globalErrors.length > 0 && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-          <h4 className="mb-2 text-sm font-semibold text-red-400">
-            Corrige los siguientes errores:
-          </h4>
           <ul className="list-inside list-disc space-y-1 text-sm text-red-300/80">
-            {validationErrors.map((err, i) => (
-              <li key={i}>{err}</li>
-            ))}
+            {globalErrors.map((err, i) => <li key={i}>{err}</li>)}
           </ul>
         </div>
       )}
 
-      {/* Error del server action */}
-      {result && !result.ok && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-          {result.error}
+      {/* Card container with slide animation */}
+      <div ref={containerRef} className="overflow-hidden" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <div
+          className="transition-transform duration-300 ease-in-out"
+          style={{
+            transform: animating
+              ? direction === 'right' ? 'translateX(-100%)' : 'translateX(100%)'
+              : 'translateX(0)',
+            opacity: animating ? 0 : 1,
+          }}
+        >
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm min-h-[400px]">
+            {step === 0 && (
+              <BloqueTitular ref={titularRef} role={user.role} isCreator={true}
+                data={titular} onChange={setTitular} editableFields={editableFields} />
+            )}
+            {step === 1 && (
+              <BloqueSuministro ref={suministroRef} data={suministro}
+                onChange={setSuministro} editableFields={editableFields} />
+            )}
+            {step === 2 && (
+              <DocumentUpload ref={docsRef} esEmpresa={titular.es_empresa}
+                data={docs} onChange={setDocs} />
+            )}
+            {step === 3 && (
+              <RevisionCard titular={titular} suministro={suministro} docs={docs}
+                validationErrors={globalErrors} onGoToStep={(s) => goToStep(s)} />
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
-      <form ref={formRef} action={formAction} className="space-y-4">
-        <BloqueComercial
-          products={products}
-          user={user}
-          disabled={mode === 'edit' && editableFields && !editableFields.some(f => ['product_id', 'observaciones'].includes(f))}
-          defaultValues={defaultValues as BloqueComercialDefaults}
-        />
-
-        <BloqueSuministro
-          disabled={mode === 'edit' && editableFields && !editableFields.some(f => f.startsWith('cups') || f.startsWith('pot') || f === 'tarifa')}
-          defaultValues={defaultValues as BloqueSuministroDefaults}
-          editableFields={editableFields}
-        />
-
-        <BloqueTitular
-          disabled={mode === 'edit' && editableFields && !editableFields.some(f => ['titular_contrato', 'dni_firmante', 'nombre_firmante'].includes(f))}
-          role={user.role}
-          isCreator={true}
-          defaultValues={defaultValues as BloqueTitularDefaults}
-          editableFields={editableFields}
-        />
-
-        <DocumentUpload
-          contractId={contractId ?? null}
-          documents={documents}
-          disabled={false}
-          onDocumentsChange={setDocuments}
-        />
-
-        {/* Botones */}
-        <div className="flex flex-wrap gap-3 pt-2">
-          <Button type="submit" variant="outline" disabled={isPending}>
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {mode === 'create' ? 'Guardar Borrador' : 'Guardar Cambios'}
+      {/* Navigation buttons — sticky bottom */}
+      <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-3 rounded-lg border border-border bg-card/95 backdrop-blur-sm px-4 py-3 shadow-lg">
+        {step > 0 && (
+          <Button variant="outline" onClick={() => goToStep(step - 1)}>
+            <ChevronLeft className="h-4 w-4" /> Anterior
           </Button>
+        )}
 
-          {contractId && (
-            <Button
-              type="button"
-              onClick={handleSendToValidation}
-              disabled={submittingValidation}
-            >
-              {submittingValidation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Enviar para Validación
-            </Button>
-          )}
-        </div>
-      </form>
+        <Button variant="outline" onClick={handleSaveDraft} disabled={saving} className="ml-auto">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <span className="hidden sm:inline">Guardar Borrador</span>
+          <span className="sm:hidden">Guardar</span>
+        </Button>
 
-      {/* Modal duplicados */}
+        {step < 3 && (
+          <Button onClick={() => goToStep(step + 1, true)}>
+            Siguiente <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+
+        {step === 3 && (
+          <Button onClick={handleSubmitValidation} disabled={submitting || globalErrors.length > 0}>
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Enviar para Validación
+          </Button>
+        )}
+      </div>
+
+      {/* Duplicates modal */}
       {duplicates && (
-        <DuplicateWarning
-          duplicates={duplicates}
-          blocking={duplicates.some(d => d.estado === 'ok')}
+        <DuplicateWarning duplicates={duplicates} blocking={duplicates.some(d => d.estado === 'ok')}
           onConfirm={async () => {
             setDuplicates(undefined)
-            // Forzar transición ignorando duplicates warning
-            const res = await changeState(contractId!, 'pendiente_validacion')
-            if (res.ok) router.push('/contratos')
+            if (createdId) {
+              const res = await changeState(createdId, 'pendiente_validacion')
+              if (res.ok) router.push('/contratos')
+            }
           }}
-          onCancel={() => setDuplicates(undefined)}
-        />
+          onCancel={() => setDuplicates(undefined)} />
       )}
-    </>
+    </div>
   )
 }
 
-// Tipos auxiliares para defaultValues
-type BloqueComercialDefaults = { product_id?: number | null; observaciones?: string }
-type BloqueSuministroDefaults = {
-  cups?: string; tarifa?: string;
-  potencia_1?: number | null; potencia_2?: number | null; potencia_3?: number | null;
-  potencia_4?: number | null; potencia_5?: number | null; potencia_6?: number | null;
-  consumo_anual?: number | null; direccion?: string; codigo_postal?: string;
-  poblacion?: string; provincia?: string; datos_manuales?: boolean;
-}
-type BloqueTitularDefaults = {
-  titular_contrato?: string; cif?: string; nombre_firmante?: string; dni_firmante?: string;
-  telefono_1?: string; telefono_2?: string; email_titular?: string;
-  cuenta_bancaria?: string; fecha_firma?: string;
-}
-
 function formatTimeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 60) return 'hace unos segundos'
-  const minutes = Math.floor(seconds / 60)
-  return `hace ${minutes} min`
+  const s = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (s < 60) return 'hace unos segundos'
+  return `hace ${Math.floor(s / 60)} min`
 }
