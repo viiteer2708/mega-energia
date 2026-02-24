@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CUPSConsumoChart } from './CUPSConsumoChart'
+import { CUPSScoring } from './CUPSScoring'
 import { cn } from '@/lib/utils'
 import type { PuntoSuministro } from '@/lib/types'
 
@@ -151,6 +152,9 @@ export function CUPSResult({ punto }: CUPSResultProps) {
         </Card>
 
       </div>
+
+      {/* Pre Scoring GRI */}
+      <CUPSScoring cups={punto.cups} nif={punto.nif} />
 
       {/* Consumo chart */}
       <Card className="border-border/50 bg-card">
