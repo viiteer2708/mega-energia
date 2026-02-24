@@ -9,14 +9,21 @@ const selectClass =
   'flex h-8 rounded-md border border-amber-500/60 bg-background px-2 py-1 text-xs text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
 
 const COMERCIALIZADORAS = [
-  'GRUPO NEW ENERGY',
-  'Iberdrola',
-  'Endesa',
-  'Naturgy',
-  'Repsol',
-  'TotalEnergies',
-  'Holaluz',
-  'Otra',
+  'ACCIONA',
+  'ADX',
+  'ELEIA',
+  'ENDESA',
+  'GANA ENERGIA',
+  'KLEEN ENERGY',
+  'MEGA',
+  'NATURGY',
+  'NET',
+  'NIBA',
+  'ODF',
+  'PASION',
+  'PLENITUDE',
+  'REPSOL',
+  'TOTAL',
 ]
 
 interface BloqueComercialProps {
