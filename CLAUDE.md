@@ -112,10 +112,10 @@ COMERCIAL | Puede ver exclusivamente su producción propia (contratos, clientes 
 
 ## Reglas de trabajo
 
-- **Idioma:** Español en UI, comentarios y commits. Código en inglés
+- **Idioma:** Español de España en UI, comentarios y commits. Código en inglés
 - **Commits:** `tipo: descripción en español`. Tipos: feat, fix, refactor, docs, style
 - **Git:** Push desde WSL siempre. Credential helper: Windows Git Credential Manager
-- **Ruta del proyecto:** `/mnt/c/Users/viite/Documents/GitHub/mega-energia`
+- **Ruta del proyecto:** `/mnt/c/Users/viite/Documents/GitHub/Gnew`
 - **Componentes:** Usar Shadcn/ui. No instalar otras librerías de UI sin preguntar
 - **TypeScript:** Strict, nunca usar `any`. Tipar todo con los tipos de `lib/types.ts`
 - **Imports:** Absolutos desde `@/`
