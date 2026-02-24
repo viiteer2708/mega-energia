@@ -43,6 +43,8 @@ export default async function DashboardPage() {
   const kpis = mockKPIs
   const filteredRanking = filterRankingByRole(mockRanking, mockUserId, user.role)
   const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' })
+  const currentMonthCap = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -52,29 +54,28 @@ export default async function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <KPICard
-          title="Contratos este mes"
+          title={`Contratos Ok ${currentMonthCap}`}
           value={kpis.contratos_mes.toString()}
           variacion={kpis.contratos_variacion}
           icon={FileText}
           accentColor="teal"
-          subtitle="contratos OK"
         />
         <KPICard
-          title={`Consumo luz ${currentYear}`}
+          title="Consumo luz"
           value={`${kpis.consumo_total_luz.toLocaleString('es-ES')} kWh`}
           icon={Zap}
           accentColor="blue"
           subtitle={`enero - diciembre ${currentYear}`}
         />
         <KPICard
-          title={`Consumo gas ${currentYear}`}
+          title="Consumo gas"
           value={`${kpis.consumo_total_gas.toLocaleString('es-ES')} kWh`}
           icon={Flame}
           accentColor="orange"
           subtitle={`enero - diciembre ${currentYear}`}
         />
         <KPICard
-          title="Facturación generada"
+          title={`Facturación ${currentMonthCap}`}
           value={`${kpis.facturacion.toLocaleString('es-ES')} €`}
           variacion={12.3}
           icon={Euro}
