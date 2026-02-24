@@ -55,6 +55,7 @@ export function ContratoForm({
   const [animating, setAnimating] = useState(false)
 
   // Data state
+  const [comercializadora, setComercializadora] = useState('')
   const [productId, setProductId] = useState<number | null>(null)
   const [observaciones, setObservaciones] = useState('')
   const [titular, setTitular] = useState<TitularData>(emptyTitular)
@@ -131,9 +132,9 @@ export function ContratoForm({
   // ── Auto-save ──────────────────────────────────────────────────────────
 
   const collectFormData = useCallback(() => ({
-    ...titular, ...suministro, product_id: productId, observaciones,
+    ...titular, ...suministro, comercializadora, product_id: productId, observaciones,
     doc_upload_mode: docs.mode,
-  }), [titular, suministro, productId, observaciones, docs.mode])
+  }), [titular, suministro, comercializadora, productId, observaciones, docs.mode])
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true)
@@ -280,8 +281,10 @@ export function ContratoForm({
       )}
 
       {/* Bloque A — cabecera fija */}
-      <BloqueComercial products={products} user={user} productId={productId}
-        observaciones={observaciones} onProductChange={setProductId} onObservacionesChange={setObservaciones} />
+      <BloqueComercial products={products} user={user} comercializadora={comercializadora}
+        productId={productId} observaciones={observaciones}
+        onComercializadoraChange={setComercializadora} onProductChange={setProductId}
+        onObservacionesChange={setObservaciones} />
 
       {/* Stepper */}
       <WizardStepper steps={steps} currentStep={step} onStepClick={(i) => goToStep(i)} progress={progress} />

@@ -9,7 +9,7 @@ import type { Role } from '@/lib/types'
 import { isFieldVisible } from '@/lib/contract-permissions'
 
 const inputClass =
-  'flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+  'flex h-10 w-full rounded-md border border-primary/50 bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
 
 export interface TitularData {
   titular_contrato: string
