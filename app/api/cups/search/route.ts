@@ -107,6 +107,10 @@ export async function GET(req: NextRequest) {
   const cups = req.nextUrl.searchParams.get('cups')?.trim().toUpperCase()
   if (!cups) return NextResponse.json({ error: 'CUPS requerido' }, { status: 400 })
 
+  if (!cups.startsWith('ES00')) {
+    return NextResponse.json({ error: 'Codigo Cups no encontrado' }, { status: 400 })
+  }
+
   if (!process.env.GREENINGENERGY_API_KEY) {
     return NextResponse.json(
       { error: 'API no configurada (GREENINGENERGY_API_KEY)' },
@@ -139,6 +143,18 @@ export async function GET(req: NextRequest) {
     const atrCode = str(cliente.CodigoTarifaATREnVigor)
     const tipoTarifa = typeof info.TipoTarifa === 'number' ? info.TipoTarifa : null
     const tarifa = mapTarifa(atrCode, tipoTarifa)
+
+    // 2.0TD tiene 3 periodos (P1, P2, P3). SIPS suele devolver solo P1 y P3.
+    // P2 (llano) = P1 (punta) en potencia contratada.
+    if (tarifa === '2.0TD') {
+      const hasP1 = potencias.some(p => p.periodo === 'P1')
+      const hasP2 = potencias.some(p => p.periodo === 'P2')
+      const hasP3 = potencias.some(p => p.periodo === 'P3')
+      if (hasP1 && !hasP2 && hasP3) {
+        const p1 = potencias.find(p => p.periodo === 'P1')!
+        potencias.splice(1, 0, { periodo: 'P2', potencia: p1.potencia })
+      }
+    }
 
     // Consumo anual — from ConsumoPeriodos (sum), fallback to ConsumoEstimado
     const consumoPeriodos = info?.ConsumoPeriodos as Obj | null
