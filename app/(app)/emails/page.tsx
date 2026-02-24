@@ -15,7 +15,7 @@ export default async function EmailsPage() {
           <Mail className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">Campañas</h1>
+          <h1 className="text-xl font-bold text-foreground">Emails</h1>
           <p className="text-sm text-muted-foreground">
             Histórico de emails recibidos (se muestran los últimos 25 correos)
           </p>
