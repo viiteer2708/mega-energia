@@ -12,7 +12,7 @@ import {
   Mail,
   Users,
   UserPlus,
-  FileText,
+  FilePlus,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -33,7 +33,7 @@ const navItems = [
   { href: '/tutoriales', label: 'Tutoriales', icon: BookOpen },
   { href: '/emails', label: 'Emails', icon: Mail },
   { href: '/crm', label: 'CRM', icon: Users },
-  { href: '/contratos', label: 'Contratos', icon: FileText },
+  { href: '/contratos/nuevo', label: 'Nuevo Contrato', icon: FilePlus },
 ]
 
 const roleColors: Record<string, string> = {

@@ -45,7 +45,7 @@ export function ContratosList({ data, user, devueltoCount }: ContratosListProps)
       if (search) params.set('search', search)
       if (estadoFilter) params.set('estado', estadoFilter)
       params.set('page', '1')
-      router.push(`/contratos?${params.toString()}`)
+      router.push(`/crm?tab=contratos&${params.toString()}`)
     }, 400)
     return () => clearTimeout(timer)
   }, [search, estadoFilter, router])
@@ -53,7 +53,7 @@ export function ContratosList({ data, user, devueltoCount }: ContratosListProps)
   const navigatePage = (page: number) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', String(page))
-    router.push(`/contratos?${params.toString()}`)
+    router.push(`/crm?tab=contratos&${params.toString()}`)
   }
 
   return (

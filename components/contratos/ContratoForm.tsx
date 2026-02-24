@@ -256,7 +256,7 @@ export function ContratoForm({
       if (stateRes.duplicates?.length) { setDuplicates(stateRes.duplicates); setSubmitting(false); return }
     }
     setSubmitting(false)
-    router.push('/contratos')
+    router.push('/crm?tab=contratos')
   }
 
   // ── Swipe handling ─────────────────────────────────────────────────────
@@ -300,7 +300,8 @@ export function ContratoForm({
         showOwnerSelector={showOwnerSelector} owners={assignableUsers}
         ownerId={ownerId} onOwnerChange={setOwnerId}
         showOperadorSelector={showOperadorSelector} operadores={assignableUsers}
-        operadorId={operadorId} onOperadorChange={setOperadorId} />
+        operadorId={operadorId} onOperadorChange={setOperadorId}
+        userRole={user.role} operadorName="" />
 
       {/* Stepper */}
       <WizardStepper steps={steps} currentStep={step} onStepClick={(i) => goToStep(i)} progress={progress} />
@@ -389,7 +390,7 @@ export function ContratoForm({
             setDuplicates(undefined)
             if (createdId) {
               const res = await changeState(createdId, 'pendiente_validacion')
-              if (res.ok) router.push('/contratos')
+              if (res.ok) router.push('/crm?tab=contratos')
             }
           }}
           onCancel={() => setDuplicates(undefined)} />
