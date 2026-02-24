@@ -38,7 +38,7 @@ async function fetchPage(apiKey: string, offset: number, limit: number): Promise
     `https://api.brevo.com/v3/emailCampaigns?status=sent&sort=desc&limit=${limit}&offset=${offset}`,
     {
       headers: { 'api-key': apiKey, accept: 'application/json' },
-      next: { revalidate: 3600 },
+      next: { revalidate: 300 },
     }
   )
 
@@ -49,7 +49,7 @@ async function fetchPage(apiKey: string, offset: number, limit: number): Promise
       `https://api.brevo.com/v3/emailCampaigns?status=sent&sort=desc&limit=${limit}&offset=${offset}`,
       {
         headers: { 'api-key': apiKey, accept: 'application/json' },
-        next: { revalidate: 3600 },
+        next: { revalidate: 300 },
       }
     )
     if (!retry.ok) return []
