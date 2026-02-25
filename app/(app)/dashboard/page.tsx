@@ -52,7 +52,7 @@ export default async function DashboardPage() {
       <DashboardHeader userName={user.full_name} />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KPICard
           title={`Contratos Ok ${currentMonthCap}`}
           value={kpis.contratos_mes.toString()}
