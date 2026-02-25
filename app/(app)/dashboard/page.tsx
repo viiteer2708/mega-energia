@@ -12,14 +12,14 @@ import { KPICard } from '@/components/dashboard/KPICard'
 import { VentasChart } from '@/components/dashboard/VentasChart'
 import { ContratosChart } from '@/components/dashboard/ContratosChart'
 import { RankingCard } from '@/components/dashboard/RankingCard'
-import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { RecentContracts } from '@/components/dashboard/RecentContracts'
 import {
   mockKPIs,
   mockVentasMensuales,
   mockContratosPorTipo,
-  mockActividades,
   mockRanking,
 } from '@/lib/mock-data'
+import { getRecentContracts } from '@/app/(app)/contratos/actions'
 import { filterRankingByRole } from '@/lib/ranking-filter'
 import { getSession } from '@/lib/session'
 
@@ -42,6 +42,7 @@ export default async function DashboardPage() {
   const mockUserId = uuidToMockId[user.id] ?? user.id
   const kpis = mockKPIs
   const filteredRanking = filterRankingByRole(mockRanking, mockUserId, user.role)
+  const recentContracts = await getRecentContracts()
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' })
   const currentMonthCap = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)
@@ -110,7 +111,7 @@ export default async function DashboardPage() {
           data={filteredRanking}
           currentUserName={user.full_name}
         />
-        <ActivityFeed actividades={mockActividades} />
+        <RecentContracts contracts={recentContracts} />
       </div>
     </div>
   )

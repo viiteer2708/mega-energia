@@ -889,7 +889,48 @@ export async function getContractsExport(filters: ContractFilters = {}): Promise
   return contracts
 }
 
-// ── 13. getAssignableUsers ───────────────────────────────────────────────────
+// ── 13. getRecentContracts (dashboard) ───────────────────────────────────────
+
+export async function getRecentContracts(): Promise<Contract[]> {
+  const auth = await getAuthProfile()
+  if (!auth) return []
+
+  const { supabase, role } = auth
+  const isAdminOrBo = role === 'ADMIN' || role === 'BACKOFFICE'
+  const table = role === 'ADMIN' ? 'contracts' : 'contracts_safe'
+
+  let query = supabase
+    .from(table)
+    .select('id, titular_contrato, estado, created_at, cups, owner:profiles!contracts_owner_id_fkey(full_name), product:products!contracts_product_id_fkey(name, type)')
+
+  if (role === 'ADMIN') {
+    query = query.is('deleted_at', null)
+  }
+
+  query = query.order('created_at', { ascending: false }).limit(5)
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('[getRecentContracts]', error.message)
+    return []
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const owner = row.owner as { full_name: string } | null
+    const product = row.product as { name: string; type: string } | null
+    return {
+      ...row,
+      owner_name: owner?.full_name ?? '',
+      product_name: product?.name ?? '',
+      product_type: product?.type as Contract['product_type'],
+      owner: undefined,
+      product: undefined,
+    } as unknown as Contract
+  })
+}
+
+// ── 14. getAssignableUsers ───────────────────────────────────────────────────
 
 export async function getAssignableUsers(): Promise<AssignableUser[]> {
   const auth = await getAuthProfile()
