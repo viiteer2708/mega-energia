@@ -59,6 +59,12 @@ export function CUPSResult({ punto }: CUPSResultProps) {
 
   const totalPotencia = punto.potencias.reduce((s, p) => s + p.potencia, 0) / punto.potencias.length
 
+  // 2.0TD: solo mostrar P1 (punta) y P3 (valle)
+  const is20TD = punto.tarifa === '2.0TD'
+  const potenciasVisibles = is20TD
+    ? punto.potencias.filter(p => p.periodo === 'P1' || p.periodo === 'P3')
+    : punto.potencias
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Header + Consumo */}
@@ -147,14 +153,14 @@ export function CUPSResult({ punto }: CUPSResultProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0 space-y-2">
-            {punto.potencias.map((p) => (
+            {potenciasVisibles.map((p) => (
               <div key={p.periodo} className="flex items-center justify-between">
                 <span className="text-xs font-mono text-muted-foreground">{p.periodo}</span>
                 <div className="flex-1 mx-3">
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary/60"
-                      style={{ width: `${Math.min(100, (p.potencia / (punto.potencias[0]?.potencia || 1)) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (p.potencia / (potenciasVisibles[0]?.potencia || 1)) * 100)}%` }}
                     />
                   </div>
                 </div>
@@ -163,6 +169,14 @@ export function CUPSResult({ punto }: CUPSResultProps) {
                 </span>
               </div>
             ))}
+            {punto.potencia_max_bie != null && punto.potencia_max_bie > 0 && (
+              <div className="flex items-center justify-between pt-2 mt-2 border-t border-border">
+                <span className="text-xs text-muted-foreground">Potencia MAX BIE</span>
+                <span className="text-xs font-semibold text-foreground font-mono w-16 text-right">
+                  {punto.potencia_max_bie} kW
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

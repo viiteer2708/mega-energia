@@ -182,6 +182,10 @@ export async function GET(req: NextRequest) {
     const puerta   = str(cliente.PuertaPS)
     const direccion = [tipoVia, via, numFinca, piso, puerta].filter(Boolean).join(' ') || null
 
+    // Potencia máxima BIE (W → kW)
+    const potMaxBieW = num(cliente.PotenciaMaximaBIEW)
+    const potenciaMaxBie = potMaxBieW !== null ? +(potMaxBieW / 1000).toFixed(3) : null
+
     // NIF + titular (rarely returned by public SIPS)
     const nif    = str(cliente.IdTitular)
     const nombreCompleto = str(cliente.NombreCompletoTitular)
@@ -230,6 +234,7 @@ export async function GET(req: NextRequest) {
       distribuidora,
       tipoMedida,
       ultimaLectura,
+      potenciaMaxBie,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Error desconocido'

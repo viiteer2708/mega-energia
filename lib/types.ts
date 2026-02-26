@@ -109,6 +109,7 @@ export interface PuntoSuministro {
   tarifa: string
   contador: TipoContador
   potencias: PotenciaPeriodo[]
+  potencia_max_bie?: number | null // kW — Potencia máxima BIE (del SIPS raw)
   // Consumo
   consumo_anual_kwh: number
   consumo_mensual: ConsumoMensual[]

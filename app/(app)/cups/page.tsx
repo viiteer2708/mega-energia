@@ -57,6 +57,7 @@ export default function CUPSPage() {
         tarifa,
         contador:                /telegestionado|smart|7|8/i.test(data.tipoMedida ?? '') ? 'telegestionado' : 'analógico',
         potencias:               potencias.length ? potencias : [{ periodo: 'P1', potencia: 0 }],
+        potencia_max_bie:        data.potenciaMaxBie ?? null,
         consumo_anual_kwh:       consumoAnual,
         consumo_mensual:         data.consumoMensual ?? [],
         ultima_lectura:          new Date().toISOString().split('T')[0],
