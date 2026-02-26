@@ -96,6 +96,8 @@ export async function createUser(
     const billingVatPct = parseFloat(formData.get('billing_vat_pct') as string) || 21
 
     const commissionType = (formData.get('commission_type') as CommissionType) || 'otro'
+    const commissionPctRaw = formData.get('commission_pct') as string | null
+    const commissionPct = commissionPctRaw ? Math.min(100, Math.max(0, parseFloat(commissionPctRaw))) : null
     const walletPersonal = parseFloat(formData.get('wallet_personal') as string) || 0.5
     const walletFamily = parseFloat(formData.get('wallet_family') as string) || 0.5
 
@@ -143,6 +145,7 @@ export async function createUser(
         billing_retention_pct: billingRetentionPct,
         billing_vat_pct: billingVatPct,
         commission_type: commissionType,
+        commission_pct: commissionPct,
         wallet_personal: walletPersonal,
         wallet_family: walletFamily,
       })

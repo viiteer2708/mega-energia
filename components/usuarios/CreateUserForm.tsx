@@ -592,6 +592,26 @@ export function CreateUserForm({
               className={inputClass}
             />
           </div>
+          {(currentRole === 'CANAL' || currentRole === 'COMERCIAL') && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <label htmlFor="commission_pct" className="text-sm font-medium text-foreground">
+                % Comisión del subordinado
+              </label>
+              <input
+                id="commission_pct"
+                name="commission_pct"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                placeholder="0 - 100"
+                className={inputClass}
+              />
+              <p className="text-xs text-muted-foreground">
+                Porcentaje de tu comisión que recibirá este usuario (0-100%)
+              </p>
+            </div>
+          )}
         </div>
       </FormSection>
 

@@ -25,6 +25,7 @@ export interface UserProfile {
   billing_vat_pct?: number
   // Configuración comercial
   commission_type?: CommissionType
+  commission_pct?: number | null
   wallet_personal?: number
   wallet_family?: number
 }
@@ -287,15 +288,15 @@ export interface Tutorial {
 /** Roles que cada rol puede crear */
 export const CREATABLE_ROLES: Record<Role, Role[]> = {
   ADMIN: ['BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL', 'COMERCIAL'],
-  BACKOFFICE: [],
+  BACKOFFICE: ['BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL', 'COMERCIAL'],
   DIRECTOR: ['KAM', 'CANAL', 'COMERCIAL'],
   KAM: ['CANAL', 'COMERCIAL'],
   CANAL: ['COMERCIAL'],
-  COMERCIAL: [],
+  COMERCIAL: ['COMERCIAL'],
 }
 
 /** Roles que pueden acceder a la sección de gestión de usuarios */
-export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL']
+export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL', 'COMERCIAL']
 
 export interface CreateUserPayload {
   email: string
@@ -318,6 +319,7 @@ export interface CreateUserPayload {
   billing_vat_pct?: number
   // Configuración comercial
   commission_type?: CommissionType
+  commission_pct?: number | null
   wallet_personal?: number
   wallet_family?: number
   // Estructura jerárquica
