@@ -27,7 +27,7 @@ import { ROLES_CAN_MANAGE_USERS } from '@/lib/types'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/comparador', label: 'Comparador', icon: GitCompare },
+  // { href: '/comparador', label: 'Comparador', icon: GitCompare }, // Oculto temporalmente
   { href: '/cups', label: 'CUPS', icon: Zap },
   { href: '/materiales', label: 'Materiales', icon: Package },
   { href: '/tutoriales', label: 'Tutoriales', icon: BookOpen },

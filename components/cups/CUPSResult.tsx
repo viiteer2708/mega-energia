@@ -61,10 +61,11 @@ export function CUPSResult({ punto }: CUPSResultProps) {
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      {/* Header card */}
-      <Card className="border-border/50 bg-card">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+      {/* Header + Consumo */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Header card */}
+        <Card className="border-border/50 bg-card">
+          <CardContent className="p-5">
             <div className="flex items-start gap-3">
               <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border', tipoColor)}>
                 <TipoIcon className="h-5 w-5" />
@@ -93,10 +94,28 @@ export function CUPSResult({ punto }: CUPSResultProps) {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-          </div>
-        </CardContent>
-      </Card>
+        {/* Consumo card */}
+        <Card className="border-2 border-primary/60 bg-primary/5">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide">
+              <Calendar className="h-3.5 w-3.5" />
+              Consumo — últimos 12 meses
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Total anual:{' '}
+              <span className="font-semibold text-foreground">
+                {punto.consumo_anual_kwh.toLocaleString('es-ES')} kWh
+              </span>
+            </p>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <CUPSConsumoChart data={punto.consumo_mensual} tipo={punto.tipo} />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* 2-col grid */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -153,24 +172,6 @@ export function CUPSResult({ punto }: CUPSResultProps) {
 
       </div>
 
-      {/* Consumo chart */}
-      <Card className="border-border/50 bg-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Calendar className="h-4 w-4 text-primary" />
-            Consumo mensual — últimos 12 meses
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Total anual:{' '}
-            <span className="font-semibold text-foreground">
-              {punto.consumo_anual_kwh.toLocaleString('es-ES')} kWh
-            </span>
-          </p>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <CUPSConsumoChart data={punto.consumo_mensual} tipo={punto.tipo} />
-        </CardContent>
-      </Card>
     </div>
   )
 }
