@@ -97,22 +97,18 @@ export function CUPSResult({ punto }: CUPSResultProps) {
           </CardContent>
         </Card>
 
-        {/* Consumo card */}
+        {/* Consumo anual card */}
         <Card className="border-2 border-primary/60 bg-primary/5">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wide">
-              <Calendar className="h-3.5 w-3.5" />
-              Consumo — últimos 12 meses
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Total anual:{' '}
-              <span className="font-semibold text-foreground">
+          <CardContent className="p-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Consumo anual</p>
+              <span className="font-mono text-base font-bold text-foreground tracking-wider">
                 {punto.consumo_anual_kwh.toLocaleString('es-ES')} kWh
               </span>
-            </p>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <CUPSConsumoChart data={punto.consumo_mensual} tipo={punto.tipo} />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -172,6 +168,18 @@ export function CUPSResult({ punto }: CUPSResultProps) {
 
       </div>
 
+      {/* Consumo mensual chart */}
+      <Card className="border-border/50 bg-card">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <Calendar className="h-3.5 w-3.5" />
+            Consumo mensual — últimos 12 meses
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <CUPSConsumoChart data={punto.consumo_mensual} tipo={punto.tipo} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
