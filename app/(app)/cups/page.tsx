@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { Zap } from 'lucide-react'
 import { CUPSSearch } from '@/components/cups/CUPSSearch'
 import { CUPSResult } from '@/components/cups/CUPSResult'
-import { CUPSRecientes } from '@/components/cups/CUPSRecientes'
-import type { PuntoSuministro, CUPSBusquedaReciente } from '@/lib/types'
+import type { PuntoSuministro } from '@/lib/types'
 
 function inferTipo(tarifa: string | null): 'electricidad' | 'gas' {
   if (!tarifa) return 'electricidad'
@@ -18,7 +17,6 @@ export default function CUPSPage() {
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
   const [resultado, setResultado] = useState<PuntoSuministro | null>(null)
-  const [recientes, setRecientes] = useState<CUPSBusquedaReciente[]>([])
 
   async function handleSearch(cups: string) {
     setLoading(true)
@@ -60,6 +58,7 @@ export default function CUPSPage() {
         potencia_max_bie:        data.potenciaMaxBie ?? null,
         consumo_anual_kwh:       consumoAnual,
         consumo_mensual:         data.consumoMensual ?? [],
+        maximetros:              data.maximetros ?? [],
         ultima_lectura:          new Date().toISOString().split('T')[0],
         ahorro_estimado_anual:   0,
         tarifa_gne_recomendada:  '',
@@ -67,10 +66,6 @@ export default function CUPSPage() {
       }
 
       setResultado(punto)
-      setRecientes(prev => {
-        if (prev.find(r => r.cups === cups)) return prev
-        return [{ cups, titular: punto.titular, tipo, fecha: new Date().toISOString() }, ...prev].slice(0, 5)
-      })
     } catch {
       setError('Error de conexión. Verifica tu acceso a la API SIPS.')
     } finally {
@@ -92,14 +87,9 @@ export default function CUPSPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-        <div className="space-y-4">
-          <CUPSSearch onSearch={handleSearch} loading={loading} error={error} />
-          {resultado && <CUPSResult punto={resultado} />}
-        </div>
-        <div>
-          <CUPSRecientes recientes={recientes} onSelect={handleSearch} />
-        </div>
+      <div className="space-y-4">
+        <CUPSSearch onSearch={handleSearch} loading={loading} error={error} />
+        {resultado && <CUPSResult punto={resultado} />}
       </div>
     </div>
   )

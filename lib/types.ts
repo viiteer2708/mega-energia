@@ -82,6 +82,16 @@ export interface ConsumoMensual {
   kwh: number
 }
 
+export interface MaximetroMensual {
+  mes: string
+  p1: number
+  p2: number
+  p3: number
+  p4: number
+  p5: number
+  p6: number
+}
+
 export interface PrecioPeriodo {
   periodo: PeriodoTarifa
   precio: number // €/kWh
@@ -113,6 +123,7 @@ export interface PuntoSuministro {
   // Consumo
   consumo_anual_kwh: number
   consumo_mensual: ConsumoMensual[]
+  maximetros: MaximetroMensual[]
   ultima_lectura: string
   // Análisis GNE
   ahorro_estimado_anual: number

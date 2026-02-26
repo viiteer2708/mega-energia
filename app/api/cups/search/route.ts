@@ -199,6 +199,7 @@ export async function GET(req: NextRequest) {
     // ── Parse CupsConsumo[] for monthly breakdown ──────────────────────
     const MES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
     const consumoMensual: { mes: string; kwh: number }[] = []
+    const maximetros: { mes: string; p1: number; p2: number; p3: number; p4: number; p5: number; p6: number }[] = []
 
     if (Array.isArray(consumoData)) {
       for (const row of consumoData as Obj[]) {
@@ -212,6 +213,19 @@ export async function GET(req: NextRequest) {
           kwh += num(row[`P${i}`]) ?? 0
         }
         if (mesLabel && kwh > 0) consumoMensual.push({ mes: mesLabel, kwh })
+
+        // Maxímetros (Potencia1..Potencia6) — kW demandados por periodo
+        if (mesLabel) {
+          const p1 = num(row.Potencia1) ?? 0
+          const p2 = num(row.Potencia2) ?? 0
+          const p3 = num(row.Potencia3) ?? 0
+          const p4 = num(row.Potencia4) ?? 0
+          const p5 = num(row.Potencia5) ?? 0
+          const p6 = num(row.Potencia6) ?? 0
+          if (p1 > 0 || p2 > 0 || p3 > 0) {
+            maximetros.push({ mes: mesLabel, p1, p2, p3, p4, p5, p6 })
+          }
+        }
       }
     }
 
@@ -224,6 +238,7 @@ export async function GET(req: NextRequest) {
       tarifa,
       potencias,
       consumoMensual,
+      maximetros,
       consumoAnual,
       titular,
       nif,

@@ -132,6 +132,7 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ultima_lectura: '2026-02-15',
     ahorro_estimado_anual: 186,
     tarifa_gne_recomendada: 'Hogar Inteligente 2.0TD',
+    maximetros: [],
     precios_gne: [
       { periodo: 'P1', precio: 0.128 },
       { periodo: 'P2', precio: 0.094 },
@@ -171,6 +172,7 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ultima_lectura: '2026-02-18',
     ahorro_estimado_anual: 2840,
     tarifa_gne_recomendada: 'Empresa Plus 3.0TD',
+    maximetros: [],
     precios_gne: [
       { periodo: 'P1', precio: 0.142 },
       { periodo: 'P2', precio: 0.098 },
@@ -208,6 +210,7 @@ export const mockCUPSDatabase: Record<string, PuntoSuministro> = {
     ultima_lectura: '2026-02-10',
     ahorro_estimado_anual: 1240,
     tarifa_gne_recomendada: 'Gas Hostelería RL.2',
+    maximetros: [],
     precios_gne: [
       { periodo: 'P1', precio: 0.068 },
     ],

@@ -2,7 +2,7 @@
 
 import {
   MapPin, User, Building2, Zap, Flame, Activity,
-  Calendar, Copy, Check,
+  Calendar, Copy, Check, Gauge,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,12 @@ import { Badge } from '@/components/ui/badge'
 import { CUPSConsumoChart } from './CUPSConsumoChart'
 
 import { cn } from '@/lib/utils'
-import type { PuntoSuministro } from '@/lib/types'
+import type { PuntoSuministro, MaximetroMensual } from '@/lib/types'
+
+const MAX_KEYS = ['p1','p2','p3','p4','p5','p6'] as const
+function maxVal(m: MaximetroMensual, k: string): number {
+  return m[k as typeof MAX_KEYS[number]] ?? 0
+}
 
 interface CUPSResultProps {
   punto: PuntoSuministro
@@ -194,6 +199,54 @@ export function CUPSResult({ punto }: CUPSResultProps) {
           <CUPSConsumoChart data={punto.consumo_mensual} tipo={punto.tipo} />
         </CardContent>
       </Card>
+
+      {/* Maxímetros */}
+      {punto.maximetros.length > 0 && (
+        <Card className="border-border/50 bg-card">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Gauge className="h-3.5 w-3.5" />
+              Maxímetros — últimos 12 meses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            {(() => {
+              const periodos = is20TD
+                ? ['p1', 'p3']
+                : MAX_KEYS.filter(k => punto.maximetros.some(m => maxVal(m, k) > 0))
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="py-2 text-left font-semibold text-muted-foreground">Mes</th>
+                        {periodos.map(p => (
+                          <th key={p} className="py-2 text-right font-semibold font-mono text-muted-foreground">{p.toUpperCase()}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {punto.maximetros.map((m) => (
+                        <tr key={m.mes} className="border-b border-border/50">
+                          <td className="py-2 text-muted-foreground">{m.mes}</td>
+                          {periodos.map(p => {
+                            const v = maxVal(m, p)
+                            return (
+                              <td key={p} className="py-2 text-right font-mono font-medium text-foreground">
+                                {v > 0 ? `${v.toLocaleString('es-ES', { minimumFractionDigits: 1 })} kW` : '—'}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
