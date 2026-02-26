@@ -298,6 +298,9 @@ export const CREATABLE_ROLES: Record<Role, Role[]> = {
 /** Roles que pueden acceder a la sección de gestión de usuarios */
 export const ROLES_CAN_MANAGE_USERS: Role[] = ['ADMIN', 'BACKOFFICE', 'DIRECTOR', 'KAM', 'CANAL', 'COMERCIAL']
 
+/** Roles que pueden acceder a la sección de comisionado */
+export const ROLES_CAN_VIEW_COMMISSIONS: Role[] = ['ADMIN', 'BACKOFFICE']
+
 export interface CreateUserPayload {
   email: string
   password: string
@@ -364,7 +367,8 @@ export type ContractEstado =
 
 export type DocTipo = 'factura' | 'dni' | 'cif' | 'escrituras' | 'contrato_firmado' | 'documentacion_completa'
 export type DocUploadMode = 'single' | 'separate'
-export type PagoStatus = 'pendiente' | 'pagado' | 'anulado'
+export type PagoStatus = 'pendiente' | 'pagado' | 'anulado' | 'retenido'
+export type CommissionGnewStatus = 'no_calculada' | 'cargada_excel' | 'calculada_formula' | 'bloqueada'
 export type ProductTipo = 'luz_hogar' | 'luz_empresa' | 'gas_hogar' | 'gas_empresa' | 'dual'
 
 export interface Campaign {
@@ -393,6 +397,7 @@ export interface Contract {
   observaciones: string | null
   activo: boolean
   estado: ContractEstado
+  status_commission_gnew: CommissionGnewStatus
   fecha_alta: string
   fecha_baja: string | null
   // Bloque B
@@ -455,6 +460,7 @@ export interface ContractCommission {
   decomission: number
   status_pago: PagoStatus
   fecha_pago: string | null
+  notes: string | null
   created_at: string
   updated_at: string
   // Join opcional
@@ -598,4 +604,104 @@ export const DOC_TIPO_LABELS: Record<DocTipo, string> = {
   escrituras: 'Escrituras',
   contrato_firmado: 'Contrato Firmado',
   documentacion_completa: 'Documentación Completa',
+}
+
+// ── Comisionado ──────────────────────────────────────────────────────────────
+
+export const PAGO_STATUS_CONFIG: Record<PagoStatus, { label: string; color: string }> = {
+  pendiente: { label: 'Pendiente', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  pagado:    { label: 'Pagado',    color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  anulado:   { label: 'Anulado',   color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  retenido:  { label: 'Retenido',  color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+}
+
+export const COMMISSION_GNEW_STATUS_CONFIG: Record<CommissionGnewStatus, { label: string; color: string }> = {
+  no_calculada:      { label: 'No calculada',      color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
+  cargada_excel:     { label: 'Cargada Excel',     color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  calculada_formula: { label: 'Calculada Fórmula', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  bloqueada:         { label: 'Bloqueada',         color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+}
+
+export interface CommissionFormulaConfig {
+  id: number
+  campaign_id: number
+  product_id: number
+  fee_energia: number
+  fee_potencia: number
+  servicio_pct: number
+  version: number
+  active: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+  // Joins opcionales
+  campaign_name?: string
+  product_name?: string
+  created_by_name?: string
+}
+
+export interface CommissionUpload {
+  id: number
+  file_name: string
+  total_rows: number
+  updated_rows: number
+  error_rows: number
+  errors: Array<{ row: number; cups?: string; error: string }> | null
+  uploaded_by: string
+  created_at: string
+  // Join opcional
+  uploaded_by_name?: string
+}
+
+export interface CommissionCalculation {
+  id: number
+  contract_id: string
+  formula_config_id: number
+  consumo_used: number | null
+  potencia_used: number | null
+  fee_energia_used: number | null
+  fee_potencia_used: number | null
+  servicio_pct_used: number | null
+  result_amount: number
+  calculated_by: string
+  created_at: string
+}
+
+export interface CommissionLineItem {
+  // De contract_commissions
+  id: number
+  contract_id: string
+  user_id: string
+  commission_paid: number
+  decomission: number
+  status_pago: PagoStatus
+  fecha_pago: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  // Joins del contrato
+  cups: string | null
+  titular_contrato: string | null
+  su_ref: string | null
+  commission_gnew: number
+  status_commission_gnew: CommissionGnewStatus
+  // Join del usuario
+  user_name: string
+  user_role: Role
+}
+
+export interface CommissionLineFilters {
+  search?: string
+  status_pago?: PagoStatus
+  fecha_desde?: string
+  fecha_hasta?: string
+  page?: number
+}
+
+export interface CommissionLineListResult {
+  lines: CommissionLineItem[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
