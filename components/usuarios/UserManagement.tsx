@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -80,9 +81,10 @@ export function UserManagement({ currentUser, users, assignableUsers }: UserMana
               .toUpperCase()
 
             return (
-              <div
+              <Link
                 key={u.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+                href={`/usuarios/${u.id}`}
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:bg-accent/50 hover:border-primary/30"
               >
                 <Avatar className="h-9 w-9 shrink-0 border border-border">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
@@ -111,7 +113,7 @@ export function UserManagement({ currentUser, users, assignableUsers }: UserMana
                     {new Date(u.created_at).toLocaleDateString('es-ES')}
                   </span>
                 )}
-              </div>
+              </Link>
             )
           })}
         </div>
