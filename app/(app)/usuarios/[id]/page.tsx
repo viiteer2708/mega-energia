@@ -17,6 +17,7 @@ export default async function UserDetailPage({ params }: Props) {
   if (!data) notFound()
 
   const canEdit = currentUser.role === 'ADMIN' || currentUser.role === 'BACKOFFICE'
+  const isAdmin = currentUser.role === 'ADMIN'
 
   return (
     <UserDetail
@@ -24,6 +25,7 @@ export default async function UserDetailPage({ params }: Props) {
       parentChain={data.parentChain}
       subordinates={data.subordinates}
       canEdit={canEdit}
+      isAdmin={isAdmin}
     />
   )
 }

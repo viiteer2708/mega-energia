@@ -15,11 +15,14 @@ export default async function UsuariosPage() {
     getAssignableUsers(),
   ])
 
+  const isAdmin = user.role === 'ADMIN'
+
   return (
     <UserManagement
       currentUser={user}
       users={users}
       assignableUsers={assignableUsers}
+      isAdmin={isAdmin}
     />
   )
 }

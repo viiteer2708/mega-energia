@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Pencil, ChevronDown, ChevronRight,
-  Briefcase, Receipt, Settings2, Network, Save, X,
+  Briefcase, Receipt, Settings2, Network, Save, X, Coins,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -148,11 +148,12 @@ interface UserDetailProps {
   parentChain: HierarchyNode[]
   subordinates: HierarchyNode[]
   canEdit: boolean
+  isAdmin: boolean
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export function UserDetail({ profile, parentChain, subordinates, canEdit }: UserDetailProps) {
+export function UserDetail({ profile, parentChain, subordinates, canEdit, isAdmin }: UserDetailProps) {
   const [editing, setEditing] = useState(false)
   const [state, formAction, isPending] = useActionState<UpdateUserResult | null, FormData>(
     updateUser,
@@ -365,28 +366,36 @@ export function UserDetail({ profile, parentChain, subordinates, canEdit }: User
                 <label className="text-sm font-medium text-foreground">Rol</label>
                 <p className="flex h-9 items-center text-sm text-muted-foreground">{roleLabels[profile.role]}</p>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="commission_type" className="text-sm font-medium text-foreground">Comisionado</label>
-                <select id="commission_type" name="commission_type" defaultValue={profile.commission_type ?? 'otro'} className={selectClass}>
-                  {(Object.entries(commissionLabels) as [CommissionType, string][]).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="wallet_personal" className="text-sm font-medium text-foreground">Wallet Personal (€/MWh)</label>
-                <input id="wallet_personal" name="wallet_personal" type="number" step="0.0001" defaultValue={profile.wallet_personal ?? 0.5} className={inputClass} />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="wallet_family" className="text-sm font-medium text-foreground">Wallet Family (€/MWh)</label>
-                <input id="wallet_family" name="wallet_family" type="number" step="0.0001" defaultValue={profile.wallet_family ?? 0.5} className={inputClass} />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="commission_pct" className="text-sm font-medium text-foreground">% Comisión</label>
-                <input id="commission_pct" name="commission_pct" type="number" min={0} max={100} step={1} defaultValue={profile.commission_pct ?? ''} placeholder="0 - 100" className={inputClass} />
-              </div>
             </div>
           </DetailSection>
+
+          {/* Comisionado — solo ADMIN */}
+          {isAdmin && (
+            <DetailSection title="Comisionado" icon={Coins} defaultOpen={false}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="commission_type" className="text-sm font-medium text-foreground">Tipo de comisionado</label>
+                  <select id="commission_type" name="commission_type" defaultValue={profile.commission_type ?? 'otro'} className={selectClass}>
+                    {(Object.entries(commissionLabels) as [CommissionType, string][]).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="wallet_personal" className="text-sm font-medium text-foreground">Wallet Personal (€/MWh)</label>
+                  <input id="wallet_personal" name="wallet_personal" type="number" step="0.0001" defaultValue={profile.wallet_personal ?? 0.5} className={inputClass} />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="wallet_family" className="text-sm font-medium text-foreground">Wallet Family (€/MWh)</label>
+                  <input id="wallet_family" name="wallet_family" type="number" step="0.0001" defaultValue={profile.wallet_family ?? 0.5} className={inputClass} />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="commission_pct" className="text-sm font-medium text-foreground">% Comisión</label>
+                  <input id="commission_pct" name="commission_pct" type="number" min={0} max={100} step={1} defaultValue={profile.commission_pct ?? ''} placeholder="0 - 100" className={inputClass} />
+                </div>
+              </div>
+            </DetailSection>
+          )}
 
           {/* Botones */}
           <div className="flex gap-2 justify-end pt-1">
@@ -439,12 +448,20 @@ export function UserDetail({ profile, parentChain, subordinates, canEdit }: User
           <DetailSection title="Configuración comercial" icon={Settings2}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <ReadOnlyField label="Rol" value={roleLabels[profile.role]} />
-              <ReadOnlyField label="Comisionado" value={profile.commission_type ? commissionLabels[profile.commission_type] : undefined} />
-              <ReadOnlyField label="Wallet Personal (€/MWh)" value={profile.wallet_personal} />
-              <ReadOnlyField label="Wallet Family (€/MWh)" value={profile.wallet_family} />
-              <ReadOnlyField label="% Comisión" value={profile.commission_pct} />
             </div>
           </DetailSection>
+
+          {/* Comisionado - lectura — solo ADMIN */}
+          {isAdmin && (
+            <DetailSection title="Comisionado" icon={Coins} defaultOpen={false}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ReadOnlyField label="Tipo de comisionado" value={profile.commission_type ? commissionLabels[profile.commission_type] : undefined} />
+                <ReadOnlyField label="Wallet Personal (€/MWh)" value={profile.wallet_personal} />
+                <ReadOnlyField label="Wallet Family (€/MWh)" value={profile.wallet_family} />
+                <ReadOnlyField label="% Comisión" value={profile.commission_pct} />
+              </div>
+            </DetailSection>
+          )}
         </div>
       )}
     </div>

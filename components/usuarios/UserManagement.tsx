@@ -22,9 +22,10 @@ interface UserManagementProps {
   currentUser: UserProfile
   users: UserListItem[]
   assignableUsers: AssignableUser[]
+  isAdmin: boolean
 }
 
-export function UserManagement({ currentUser, users, assignableUsers }: UserManagementProps) {
+export function UserManagement({ currentUser, users, assignableUsers, isAdmin }: UserManagementProps) {
   const [showForm, setShowForm] = useState(false)
 
   return (
@@ -62,6 +63,7 @@ export function UserManagement({ currentUser, users, assignableUsers }: UserMana
           currentRole={currentUser.role}
           currentUserId={currentUser.id}
           assignableUsers={assignableUsers}
+          isAdmin={isAdmin}
           onCancel={() => setShowForm(false)}
         />
       )}

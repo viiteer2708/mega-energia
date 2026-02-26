@@ -121,11 +121,19 @@ export async function createUser(
     const billingRetentionPct = parseFloat(formData.get('billing_retention_pct') as string) || 0
     const billingVatPct = parseFloat(formData.get('billing_vat_pct') as string) || 21
 
-    const commissionType = (formData.get('commission_type') as CommissionType) || 'otro'
-    const commissionPctRaw = formData.get('commission_pct') as string | null
-    const commissionPct = commissionPctRaw ? Math.min(100, Math.max(0, parseFloat(commissionPctRaw))) : null
-    const walletPersonal = parseFloat(formData.get('wallet_personal') as string) || 0.5
-    const walletFamily = parseFloat(formData.get('wallet_family') as string) || 0.5
+    // Solo ADMIN puede establecer campos de comisión; resto usa valores por defecto
+    let commissionType: CommissionType = 'otro'
+    let commissionPct: number | null = null
+    let walletPersonal = 0.5
+    let walletFamily = 0.5
+
+    if (currentRole === 'ADMIN') {
+      commissionType = (formData.get('commission_type') as CommissionType) || 'otro'
+      const commissionPctRaw = formData.get('commission_pct') as string | null
+      commissionPct = commissionPctRaw ? Math.min(100, Math.max(0, parseFloat(commissionPctRaw))) : null
+      walletPersonal = parseFloat(formData.get('wallet_personal') as string) || 0.5
+      walletFamily = parseFloat(formData.get('wallet_family') as string) || 0.5
+    }
 
     const parentId = (formData.get('parent_id') as string)?.trim() || currentAuthUser.id
     const subordinateIdsRaw = (formData.get('subordinate_ids') as string)?.trim()
@@ -208,6 +216,15 @@ export async function getUserById(id: string): Promise<UserDetailData | null> {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) return null
 
+  // Obtener rol del caller para filtrar campos sensibles
+  const { data: callerProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', authUser.id)
+    .single()
+
+  const callerRole = callerProfile?.role as Role | undefined
+
   // Perfil completo
   const { data: profile, error } = await supabase
     .from('profiles')
@@ -216,6 +233,14 @@ export async function getUserById(id: string): Promise<UserDetailData | null> {
     .single()
 
   if (error || !profile) return null
+
+  // Defensa en profundidad: eliminar campos de comisión si no es ADMIN
+  if (callerRole !== 'ADMIN') {
+    profile.commission_type = null
+    profile.commission_pct = null
+    profile.wallet_personal = null
+    profile.wallet_family = null
+  }
 
   // Cadena ascendente de superiores
   const parentChain: HierarchyNode[] = []
@@ -288,7 +313,7 @@ export async function updateUser(
       return { ok: false, error: 'Nombre y alias son obligatorios.' }
     }
 
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       full_name: fullName,
       alias,
       commercial_nif: (formData.get('commercial_nif') as string)?.trim() ?? '',
@@ -302,12 +327,16 @@ export async function updateUser(
       billing_iban: (formData.get('billing_iban') as string)?.trim() ?? '',
       billing_retention_pct: parseFloat(formData.get('billing_retention_pct') as string) || 0,
       billing_vat_pct: parseFloat(formData.get('billing_vat_pct') as string) || 21,
-      commission_type: (formData.get('commission_type') as CommissionType) || 'otro',
-      commission_pct: formData.get('commission_pct')
+    }
+
+    // Solo ADMIN puede modificar campos de comisión
+    if (currentRole === 'ADMIN') {
+      updateData.commission_type = (formData.get('commission_type') as CommissionType) || 'otro'
+      updateData.commission_pct = formData.get('commission_pct')
         ? Math.min(100, Math.max(0, parseFloat(formData.get('commission_pct') as string)))
-        : null,
-      wallet_personal: parseFloat(formData.get('wallet_personal') as string) || 0.5,
-      wallet_family: parseFloat(formData.get('wallet_family') as string) || 0.5,
+        : null
+      updateData.wallet_personal = parseFloat(formData.get('wallet_personal') as string) || 0.5
+      updateData.wallet_family = parseFloat(formData.get('wallet_family') as string) || 0.5
     }
 
     const { error: updateError } = await supabase

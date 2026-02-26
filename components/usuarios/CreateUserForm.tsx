@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useMemo } from 'react'
 import {
   ChevronDown, ChevronRight, KeyRound, Briefcase,
-  Receipt, Settings2, Network, FileText, X, Search
+  Receipt, Settings2, Network, FileText, X, Search, Coins
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CREATABLE_ROLES } from '@/lib/types'
@@ -279,6 +279,7 @@ interface CreateUserFormProps {
   currentRole: Role
   currentUserId: string
   assignableUsers: AssignableUser[]
+  isAdmin: boolean
   onCancel: () => void
 }
 
@@ -286,6 +287,7 @@ export function CreateUserForm({
   currentRole,
   currentUserId,
   assignableUsers,
+  isAdmin,
   onCancel,
 }: CreateUserFormProps) {
   const allowedRoles = CREATABLE_ROLES[currentRole]
@@ -556,46 +558,52 @@ export function CreateUserForm({
               ))}
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="commission_type" className="text-sm font-medium text-foreground">
-              Comisionado
-            </label>
-            <select id="commission_type" name="commission_type" defaultValue="otro" className={selectClass}>
-              {(Object.entries(commissionLabels) as [CommissionType, string][]).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="wallet_personal" className="text-sm font-medium text-foreground">
-              Wallet Personal (€/MWh)
-            </label>
-            <input
-              id="wallet_personal"
-              name="wallet_personal"
-              type="number"
-              step="0.0001"
-              defaultValue={0.5}
-              className={inputClass}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="wallet_family" className="text-sm font-medium text-foreground">
-              Wallet Family (€/MWh)
-            </label>
-            <input
-              id="wallet_family"
-              name="wallet_family"
-              type="number"
-              step="0.0001"
-              defaultValue={0.5}
-              className={inputClass}
-            />
-          </div>
-          {(currentRole === 'CANAL' || currentRole === 'COMERCIAL') && (
-            <div className="space-y-1.5 sm:col-span-2">
+        </div>
+      </FormSection>
+
+      {/* Sección 4b: Comisionado — solo ADMIN */}
+      {isAdmin && (
+        <FormSection title="Comisionado" icon={Coins} defaultOpen={false}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="commission_type" className="text-sm font-medium text-foreground">
+                Tipo de comisionado
+              </label>
+              <select id="commission_type" name="commission_type" defaultValue="otro" className={selectClass}>
+                {(Object.entries(commissionLabels) as [CommissionType, string][]).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="wallet_personal" className="text-sm font-medium text-foreground">
+                Wallet Personal (€/MWh)
+              </label>
+              <input
+                id="wallet_personal"
+                name="wallet_personal"
+                type="number"
+                step="0.0001"
+                defaultValue={0.5}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="wallet_family" className="text-sm font-medium text-foreground">
+                Wallet Family (€/MWh)
+              </label>
+              <input
+                id="wallet_family"
+                name="wallet_family"
+                type="number"
+                step="0.0001"
+                defaultValue={0.5}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1.5">
               <label htmlFor="commission_pct" className="text-sm font-medium text-foreground">
-                % Comisión del subordinado
+                % Comisión
               </label>
               <input
                 id="commission_pct"
@@ -607,13 +615,10 @@ export function CreateUserForm({
                 placeholder="0 - 100"
                 className={inputClass}
               />
-              <p className="text-xs text-muted-foreground">
-                Porcentaje de tu comisión que recibirá este usuario (0-100%)
-              </p>
             </div>
-          )}
-        </div>
-      </FormSection>
+          </div>
+        </FormSection>
+      )}
 
       {/* Sección 5: Estructura jerárquica */}
       <FormSection title="Estructura jerárquica" icon={Network}>
