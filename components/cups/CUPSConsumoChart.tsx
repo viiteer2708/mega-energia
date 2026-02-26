@@ -56,6 +56,7 @@ export function CUPSConsumoChart({ data, tipo }: CUPSConsumoChartProps) {
           tick={{ fill: 'oklch(0.60 0 0)', fontSize: 10 }}
           axisLine={false}
           tickLine={false}
+          tickFormatter={(v: number) => v.toLocaleString('es-ES')}
         />
         <Tooltip content={<CustomTooltip />} />
         <Bar dataKey="kwh" fill={color} radius={[3, 3, 0, 0]} />

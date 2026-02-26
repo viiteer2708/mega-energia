@@ -55,9 +55,9 @@ export function RevisionCard({ titular, suministro, docs, validationErrors, onGo
         <Row label="Potencias (kW)" value={
           [suministro.potencia_1, suministro.potencia_2, suministro.potencia_3,
            suministro.potencia_4, suministro.potencia_5, suministro.potencia_6]
-            .filter(Boolean).join(' / ') || ''
+            .filter(Boolean).map(v => Number(v).toLocaleString('es-ES', { minimumFractionDigits: 1 })).join(' / ') || ''
         } />
-        <Row label="Consumo anual" value={suministro.consumo_anual ? `${suministro.consumo_anual} kWh` : ''} />
+        <Row label="Consumo anual" value={suministro.consumo_anual ? `${Number(suministro.consumo_anual).toLocaleString('es-ES')} kWh` : ''} />
         <Row label="Dirección" value={suministro.direccion} />
         <Row label="CP" value={suministro.codigo_postal} />
         <Row label="Población" value={suministro.poblacion} />
