@@ -403,8 +403,10 @@ export async function getFormulaConfigs(): Promise<CommissionFormulaConfig[]> {
       campaign_id: row.campaign_id as number,
       product_id: row.product_id as number,
       fee_energia: row.fee_energia as number,
+      pct_fee_energia: row.pct_fee_energia as number,
       fee_potencia: row.fee_potencia as number,
-      servicio_pct: row.servicio_pct as number,
+      pct_fee_potencia: row.pct_fee_potencia as number,
+      comision_servicio: row.comision_servicio as number,
       version: row.version as number,
       active: row.active as boolean,
       created_by: row.created_by as string,
@@ -431,8 +433,10 @@ export async function createFormulaConfig(
   const campaignId = Number(formData.get('campaign_id'))
   const productId = Number(formData.get('product_id'))
   const feeEnergia = Number(formData.get('fee_energia') || 0)
+  const pctFeeEnergia = Number(formData.get('pct_fee_energia') || 100)
   const feePotencia = Number(formData.get('fee_potencia') || 0)
-  const servicioPct = Number(formData.get('servicio_pct') || 0)
+  const pctFeePotencia = Number(formData.get('pct_fee_potencia') || 100)
+  const comisionServicio = Number(formData.get('comision_servicio') || 0)
 
   if (!campaignId || !productId) {
     return { ok: false, error: 'Campaña y producto son obligatorios.' }
@@ -464,8 +468,10 @@ export async function createFormulaConfig(
       campaign_id: campaignId,
       product_id: productId,
       fee_energia: feeEnergia,
+      pct_fee_energia: pctFeeEnergia,
       fee_potencia: feePotencia,
-      servicio_pct: servicioPct,
+      pct_fee_potencia: pctFeePotencia,
+      comision_servicio: comisionServicio,
       version: newVersion,
       active: true,
       created_by: auth.userId,
@@ -492,14 +498,22 @@ export async function updateFormulaConfig(
   }
 
   const feeEnergia = Number(formData.get('fee_energia') || 0)
+  const pctFeeEnergia = Number(formData.get('pct_fee_energia') || 100)
   const feePotencia = Number(formData.get('fee_potencia') || 0)
-  const servicioPct = Number(formData.get('servicio_pct') || 0)
+  const pctFeePotencia = Number(formData.get('pct_fee_potencia') || 100)
+  const comisionServicio = Number(formData.get('comision_servicio') || 0)
 
   const admin = getAdminClient()
 
   const { error } = await admin
     .from('commission_formula_config')
-    .update({ fee_energia: feeEnergia, fee_potencia: feePotencia, servicio_pct: servicioPct })
+    .update({
+      fee_energia: feeEnergia,
+      pct_fee_energia: pctFeeEnergia,
+      fee_potencia: feePotencia,
+      pct_fee_potencia: pctFeePotencia,
+      comision_servicio: comisionServicio,
+    })
     .eq('id', id)
 
   if (error) {
@@ -545,17 +559,17 @@ export async function calculateByFormula(configId: number): Promise<FormulaCalcR
 
   let updated = 0
   const feeE = Number(config.fee_energia)
+  const pctE = Number(config.pct_fee_energia)
   const feeP = Number(config.fee_potencia)
-  const servPct = Number(config.servicio_pct)
+  const pctP = Number(config.pct_fee_potencia)
+  const comServ = Number(config.comision_servicio)
 
   for (const c of contracts) {
     const consumo = Number(c.consumo_anual ?? 0)
     const potencia = Number(c.media_potencia ?? 0)
 
-    let gnew = consumo * feeE + potencia * feeP
-    if (servPct > 0) {
-      gnew += gnew * (servPct / 100)
-    }
+    // Fórmula: (consumo × fee_energia × pct/100) + (potencia × fee_potencia × pct/100) + comision_servicio
+    let gnew = (consumo * feeE * (pctE / 100)) + (potencia * feeP * (pctP / 100)) + comServ
     gnew = Math.round(gnew * 10000) / 10000
 
     // Actualizar contrato
@@ -574,8 +588,10 @@ export async function calculateByFormula(configId: number): Promise<FormulaCalcR
       consumo_used: consumo,
       potencia_used: potencia,
       fee_energia_used: feeE,
+      pct_fee_energia_used: pctE,
       fee_potencia_used: feeP,
-      servicio_pct_used: servPct,
+      pct_fee_potencia_used: pctP,
+      comision_servicio_used: comServ,
       result_amount: gnew,
       calculated_by: auth.userId,
     })

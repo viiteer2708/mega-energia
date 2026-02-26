@@ -122,18 +122,26 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
 
                   {/* Fees display */}
                   {editingId !== config.id && (
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-5 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Fee energía:</span>{' '}
                         <span className="font-mono">{config.fee_energia}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">% Fee energía:</span>{' '}
+                        <span className="font-mono">{config.pct_fee_energia}%</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Fee potencia:</span>{' '}
                         <span className="font-mono">{config.fee_potencia}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Servicio %:</span>{' '}
-                        <span className="font-mono">{config.servicio_pct}%</span>
+                        <span className="text-muted-foreground">% Fee potencia:</span>{' '}
+                        <span className="font-mono">{config.pct_fee_potencia}%</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Com. servicio:</span>{' '}
+                        <span className="font-mono">{config.comision_servicio} €</span>
                       </div>
                     </div>
                   )}
@@ -142,7 +150,7 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                   {editingId === config.id && (
                     <form
                       action={(fd) => handleUpdate(config.id, fd)}
-                      className="grid grid-cols-3 gap-3"
+                      className="grid grid-cols-5 gap-3"
                     >
                       <div>
                         <label className={labelClass}>Fee energía</label>
@@ -151,6 +159,16 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                           type="number"
                           step="0.000001"
                           defaultValue={config.fee_energia}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>% Fee energía</label>
+                        <input
+                          name="pct_fee_energia"
+                          type="number"
+                          step="0.01"
+                          defaultValue={config.pct_fee_energia}
                           className={inputClass}
                         />
                       </div>
@@ -165,16 +183,26 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Servicio %</label>
+                        <label className={labelClass}>% Fee potencia</label>
                         <input
-                          name="servicio_pct"
+                          name="pct_fee_potencia"
                           type="number"
                           step="0.01"
-                          defaultValue={config.servicio_pct}
+                          defaultValue={config.pct_fee_potencia}
                           className={inputClass}
                         />
                       </div>
-                      <div className="col-span-3 flex gap-2">
+                      <div>
+                        <label className={labelClass}>Com. servicio (€)</label>
+                        <input
+                          name="comision_servicio"
+                          type="number"
+                          step="0.01"
+                          defaultValue={config.comision_servicio}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="col-span-5 flex gap-2">
                         <Button type="submit" size="sm" disabled={isPending}>
                           Guardar
                         </Button>
@@ -239,7 +267,7 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-5 gap-4">
                 <div>
                   <label className={labelClass}>Fee energía (€/kWh)</label>
                   <input
@@ -247,6 +275,16 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                     type="number"
                     step="0.000001"
                     defaultValue="0"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>% Fee energía</label>
+                  <input
+                    name="pct_fee_energia"
+                    type="number"
+                    step="0.01"
+                    defaultValue="100"
                     className={inputClass}
                   />
                 </div>
@@ -261,9 +299,19 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Servicio %</label>
+                  <label className={labelClass}>% Fee potencia</label>
                   <input
-                    name="servicio_pct"
+                    name="pct_fee_potencia"
+                    type="number"
+                    step="0.01"
+                    defaultValue="100"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Com. servicio (€)</label>
+                  <input
+                    name="comision_servicio"
                     type="number"
                     step="0.01"
                     defaultValue="0"
@@ -273,7 +321,7 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Fórmula: comisión = (consumo_anual × fee_energía) + (media_potencia × fee_potencia) + servicio_%
+                Fórmula: (consumo × fee_energía × %fee_energía) + (potencia × fee_potencia × %fee_potencia) + comisión_servicio
               </p>
 
               <div className="flex gap-2">

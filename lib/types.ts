@@ -627,8 +627,10 @@ export interface CommissionFormulaConfig {
   campaign_id: number
   product_id: number
   fee_energia: number
+  pct_fee_energia: number
   fee_potencia: number
-  servicio_pct: number
+  pct_fee_potencia: number
+  comision_servicio: number
   version: number
   active: boolean
   created_by: string
@@ -660,8 +662,10 @@ export interface CommissionCalculation {
   consumo_used: number | null
   potencia_used: number | null
   fee_energia_used: number | null
+  pct_fee_energia_used: number | null
   fee_potencia_used: number | null
-  servicio_pct_used: number | null
+  pct_fee_potencia_used: number | null
+  comision_servicio_used: number | null
   result_amount: number
   calculated_by: string
   created_at: string
