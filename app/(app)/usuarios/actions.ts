@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
@@ -165,6 +166,7 @@ export async function createUser(
         .in('id', subordinateIds)
     }
 
+    revalidatePath('/usuarios')
     return { ok: true }
   } catch (err) {
     if (isRedirectError(err)) throw err
