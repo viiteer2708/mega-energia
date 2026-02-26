@@ -709,3 +709,79 @@ export interface CommissionLineListResult {
   pageSize: number
   totalPages: number
 }
+
+// ── Tablas de comisiones por rangos ─────────────────────────────────────────
+
+export type TarifaAcceso =
+  | '2.0TD' | '3.0TD'
+  | '6.1TD' | '6.2TD' | '6.3TD' | '6.4TD'
+  | 'RL.1' | 'RL.2' | 'RL.3' | 'RL.4'
+
+export const TARIFAS_ELECTRICIDAD: TarifaAcceso[] = ['2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD']
+export const TARIFAS_GAS: TarifaAcceso[] = ['RL.1', 'RL.2', 'RL.3', 'RL.4']
+export const ALL_TARIFAS: TarifaAcceso[] = [...TARIFAS_ELECTRICIDAD, ...TARIFAS_GAS]
+
+export interface RateTable {
+  id: number
+  comercializadora: string
+  version: number
+  active: boolean
+  notes: string | null
+  uploaded_by: string
+  created_at: string
+  updated_at: string
+  // Join opcional
+  uploaded_by_name?: string
+}
+
+export interface RateTableSheet {
+  id: number
+  rate_table_id: number
+  tarifa: string
+}
+
+export interface RateTableOffer {
+  id: number
+  sheet_id: number
+  offer_name: string
+  fee: number | null
+  sort_order: number
+}
+
+export interface RateTableRate {
+  id: number
+  offer_id: number
+  kwh_from: number
+  kwh_to: number
+  commission: number
+}
+
+export interface RateTableUpload {
+  id: number
+  rate_table_id: number
+  file_name: string
+  comercializadora: string
+  totals: { sheets: number; offers: number; rates: number } | null
+  errors: Array<{ sheet?: string; row?: number; error: string }> | null
+  uploaded_by: string
+  created_at: string
+  // Join opcional
+  uploaded_by_name?: string
+}
+
+/** Datos parseados de una hoja del Excel (client-side) */
+export interface ParsedRateTableOffer {
+  offer_name: string
+  fee: number | null
+  rates: Array<{ kwh_from: number; kwh_to: number; commission: number }>
+}
+
+export interface ParsedRateTableSheet {
+  tarifa: string
+  offers: ParsedRateTableOffer[]
+}
+
+export interface ParsedRateTable {
+  comercializadora: string
+  sheets: ParsedRateTableSheet[]
+}

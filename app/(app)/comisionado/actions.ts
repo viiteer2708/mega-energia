@@ -6,7 +6,8 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import type {
   Role, PagoStatus, CommissionLineFilters, CommissionLineListResult,
   CommissionLineItem, CommissionFormulaConfig, CommissionUpload,
-  Campaign, Product,
+  Campaign, Product, RateTable, RateTableUpload,
+  ParsedRateTable,
 } from '@/lib/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -676,4 +677,245 @@ export async function getProducts(): Promise<Product[]> {
     .order('name')
 
   return (data ?? []) as Product[]
+}
+
+// ── 12. processRateTableUpload ──────────────────────────────────────────────
+
+interface RateTableUploadResult extends ActionResult {
+  totals?: { sheets: number; offers: number; rates: number }
+  errors?: Array<{ sheet?: string; row?: number; error: string }>
+}
+
+export async function processRateTableUpload(
+  _prev: RateTableUploadResult | null,
+  formData: FormData
+): Promise<RateTableUploadResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede subir tablas de rangos.' }
+  }
+
+  const jsonData = formData.get('data') as string
+  const fileName = formData.get('file_name') as string
+
+  if (!jsonData || !fileName) {
+    return { ok: false, error: 'Datos no recibidos.' }
+  }
+
+  let parsed: ParsedRateTable
+  try {
+    parsed = JSON.parse(jsonData)
+  } catch {
+    return { ok: false, error: 'Formato de datos inválido.' }
+  }
+
+  if (!parsed.comercializadora?.trim()) {
+    return { ok: false, error: 'Comercializadora es obligatoria.' }
+  }
+
+  if (!parsed.sheets || parsed.sheets.length === 0) {
+    return { ok: false, error: 'No se encontraron hojas con datos.' }
+  }
+
+  const admin = getAdminClient()
+  const errors: Array<{ sheet?: string; row?: number; error: string }> = []
+  let totalOffers = 0
+  let totalRates = 0
+
+  // Desactivar versión anterior de esta comercializadora
+  const { data: existing } = await admin
+    .from('rate_tables')
+    .select('id, version')
+    .eq('comercializadora', parsed.comercializadora.trim())
+    .eq('active', true)
+    .maybeSingle()
+
+  const newVersion = existing ? (existing.version as number) + 1 : 1
+
+  if (existing) {
+    await admin
+      .from('rate_tables')
+      .update({ active: false })
+      .eq('id', existing.id)
+  }
+
+  // Insertar rate_table
+  const { data: rateTable, error: rtError } = await admin
+    .from('rate_tables')
+    .insert({
+      comercializadora: parsed.comercializadora.trim(),
+      version: newVersion,
+      active: true,
+      uploaded_by: auth.userId,
+    })
+    .select('id')
+    .single()
+
+  if (rtError || !rateTable) {
+    return { ok: false, error: rtError?.message ?? 'Error al crear rate_table.' }
+  }
+
+  const rateTableId = rateTable.id as number
+
+  // Insertar sheets, offers y rates
+  for (const sheet of parsed.sheets) {
+    if (!sheet.tarifa || !sheet.offers || sheet.offers.length === 0) {
+      errors.push({ sheet: sheet.tarifa, error: 'Hoja sin ofertas' })
+      continue
+    }
+
+    const { data: sheetRow, error: sheetError } = await admin
+      .from('rate_table_sheets')
+      .insert({ rate_table_id: rateTableId, tarifa: sheet.tarifa })
+      .select('id')
+      .single()
+
+    if (sheetError || !sheetRow) {
+      errors.push({ sheet: sheet.tarifa, error: sheetError?.message ?? 'Error creando hoja' })
+      continue
+    }
+
+    const sheetId = sheetRow.id as number
+
+    for (let oi = 0; oi < sheet.offers.length; oi++) {
+      const offer = sheet.offers[oi]
+
+      const { data: offerRow, error: offerError } = await admin
+        .from('rate_table_offers')
+        .insert({
+          sheet_id: sheetId,
+          offer_name: offer.offer_name,
+          fee: offer.fee,
+          sort_order: oi,
+        })
+        .select('id')
+        .single()
+
+      if (offerError || !offerRow) {
+        errors.push({ sheet: sheet.tarifa, error: `Oferta "${offer.offer_name}": ${offerError?.message ?? 'Error'}` })
+        continue
+      }
+
+      const offerId = offerRow.id as number
+      totalOffers++
+
+      // Insertar rates en batch
+      if (offer.rates.length > 0) {
+        const rateInserts = offer.rates.map(r => ({
+          offer_id: offerId,
+          kwh_from: r.kwh_from,
+          kwh_to: r.kwh_to,
+          commission: r.commission,
+        }))
+
+        const { error: ratesError } = await admin
+          .from('rate_table_rates')
+          .insert(rateInserts)
+
+        if (ratesError) {
+          errors.push({ sheet: sheet.tarifa, error: `Rates "${offer.offer_name}": ${ratesError.message}` })
+        } else {
+          totalRates += offer.rates.length
+        }
+      }
+    }
+  }
+
+  const totals = { sheets: parsed.sheets.length, offers: totalOffers, rates: totalRates }
+
+  // Log de subida
+  await admin.from('rate_table_uploads').insert({
+    rate_table_id: rateTableId,
+    file_name: fileName,
+    comercializadora: parsed.comercializadora.trim(),
+    totals,
+    errors: errors.length > 0 ? errors : null,
+    uploaded_by: auth.userId,
+  })
+
+  // Audit
+  await admin.from('audit_log').insert({
+    user_id: auth.userId,
+    action: 'rate_table_upload',
+    details: { file_name: fileName, comercializadora: parsed.comercializadora, totals, errors_count: errors.length },
+  })
+
+  revalidatePath('/comisionado')
+  return { ok: true, totals, errors: errors.length > 0 ? errors : undefined }
+}
+
+// ── 13. getRateTables ───────────────────────────────────────────────────────
+
+export async function getRateTables(): Promise<RateTable[]> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') return []
+
+  const { supabase } = auth
+
+  const { data, error } = await supabase
+    .from('rate_tables')
+    .select(`
+      *,
+      uploader:profiles!rate_tables_uploaded_by_fkey(full_name)
+    `)
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[getRateTables]', error.message)
+    return []
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const uploader = row.uploader as { full_name: string } | null
+    return {
+      id: row.id as number,
+      comercializadora: row.comercializadora as string,
+      version: row.version as number,
+      active: row.active as boolean,
+      notes: row.notes as string | null,
+      uploaded_by: row.uploaded_by as string,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+      uploaded_by_name: uploader?.full_name ?? '',
+    } satisfies RateTable
+  })
+}
+
+// ── 14. getRateTableUploadHistory ───────────────────────────────────────────
+
+export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') return []
+
+  const { supabase } = auth
+
+  const { data, error } = await supabase
+    .from('rate_table_uploads')
+    .select(`
+      *,
+      uploader:profiles!rate_table_uploads_uploaded_by_fkey(full_name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) {
+    console.error('[getRateTableUploadHistory]', error.message)
+    return []
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const uploader = row.uploader as { full_name: string } | null
+    return {
+      id: row.id as number,
+      rate_table_id: row.rate_table_id as number,
+      file_name: row.file_name as string,
+      comercializadora: row.comercializadora as string,
+      totals: row.totals as RateTableUpload['totals'],
+      errors: row.errors as RateTableUpload['errors'],
+      uploaded_by: row.uploaded_by as string,
+      created_at: row.created_at as string,
+      uploaded_by_name: uploader?.full_name ?? '',
+    } satisfies RateTableUpload
+  })
 }
