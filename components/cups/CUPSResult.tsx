@@ -135,7 +135,7 @@ export function CUPSResult({ punto }: CUPSResultProps) {
             <InfoRow label="Tipo de contador" value={punto.contador === 'telegestionado' ? 'Telegestionado' : 'Analógico'} />
             <InfoRow
               label={punto.tipo === 'electricidad' ? 'Potencia media' : 'Caudal máximo'}
-              value={`${totalPotencia.toFixed(2)} ${punto.tipo === 'electricidad' ? 'kW' : 'm³/h'}`}
+              value={`${totalPotencia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${punto.tipo === 'electricidad' ? 'kW' : 'm³/h'}`}
             />
             <InfoRow
               label="Última lectura"
@@ -164,16 +164,16 @@ export function CUPSResult({ punto }: CUPSResultProps) {
                     />
                   </div>
                 </div>
-                <span className="text-xs font-semibold text-foreground font-mono w-16 text-right">
-                  {p.potencia} kW
+                <span className="text-xs font-semibold text-foreground font-mono w-20 text-right">
+                  {p.potencia.toLocaleString('es-ES', { minimumFractionDigits: 1 })} kW
                 </span>
               </div>
             ))}
             {punto.potencia_max_bie != null && punto.potencia_max_bie > 0 && (
               <div className="flex items-center justify-between pt-2 mt-2 border-t border-border">
                 <span className="text-xs text-muted-foreground">Potencia MAX BIE</span>
-                <span className="text-xs font-semibold text-foreground font-mono w-16 text-right">
-                  {punto.potencia_max_bie} kW
+                <span className="text-xs font-semibold text-foreground font-mono w-20 text-right">
+                  {punto.potencia_max_bie!.toLocaleString('es-ES', { minimumFractionDigits: 1 })} kW
                 </span>
               </div>
             )}
