@@ -635,9 +635,8 @@ export interface CommissionFormulaConfig {
   comercializadora_id: number
   product_id: number
   fee_energia: number
-  pct_fee_energia: number
+  mi: number
   fee_potencia: number
-  pct_fee_potencia: number
   comision_servicio: number
   version: number
   active: boolean
@@ -670,9 +669,8 @@ export interface CommissionCalculation {
   consumo_used: number | null
   potencia_used: number | null
   fee_energia_used: number | null
-  pct_fee_energia_used: number | null
+  mi_used: number | null
   fee_potencia_used: number | null
-  pct_fee_potencia_used: number | null
   comision_servicio_used: number | null
   result_amount: number
   calculated_by: string

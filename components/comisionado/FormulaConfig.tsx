@@ -128,22 +128,18 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
 
                   {/* Fees display */}
                   {editingId !== config.id && (
-                    <div className="grid grid-cols-5 gap-4 text-sm">
+                    <div className="grid grid-cols-4 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Fee energía:</span>{' '}
                         <span className="font-mono">{config.fee_energia}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">% Fee energía:</span>{' '}
-                        <span className="font-mono">{config.pct_fee_energia}%</span>
+                        <span className="text-muted-foreground">MI:</span>{' '}
+                        <span className="font-mono">{config.mi}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Fee potencia:</span>{' '}
                         <span className="font-mono">{config.fee_potencia}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">% Fee potencia:</span>{' '}
-                        <span className="font-mono">{config.pct_fee_potencia}%</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Com. servicio:</span>{' '}
@@ -156,7 +152,7 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                   {editingId === config.id && (
                     <form
                       action={(fd) => handleUpdate(config.id, fd)}
-                      className="grid grid-cols-5 gap-3"
+                      className="grid grid-cols-4 gap-3"
                     >
                       <div>
                         <label className={labelClass}>Fee energía</label>
@@ -169,12 +165,12 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>% Fee energía</label>
+                        <label className={labelClass}>MI</label>
                         <input
-                          name="pct_fee_energia"
+                          name="mi"
                           type="number"
-                          step="0.01"
-                          defaultValue={config.pct_fee_energia}
+                          step="0.000001"
+                          defaultValue={config.mi}
                           className={inputClass}
                         />
                       </div>
@@ -189,16 +185,6 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>% Fee potencia</label>
-                        <input
-                          name="pct_fee_potencia"
-                          type="number"
-                          step="0.01"
-                          defaultValue={config.pct_fee_potencia}
-                          className={inputClass}
-                        />
-                      </div>
-                      <div>
                         <label className={labelClass}>Com. servicio (€)</label>
                         <input
                           name="comision_servicio"
@@ -208,7 +194,7 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                           className={inputClass}
                         />
                       </div>
-                      <div className="col-span-5 flex gap-2">
+                      <div className="col-span-4 flex gap-2">
                         <Button type="submit" size="sm" disabled={isPending}>
                           Guardar
                         </Button>
@@ -278,7 +264,7 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className={labelClass}>Fee energía (€/kWh)</label>
                   <input
@@ -290,12 +276,12 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>% Fee energía</label>
+                  <label className={labelClass}>MI</label>
                   <input
-                    name="pct_fee_energia"
+                    name="mi"
                     type="number"
-                    step="0.01"
-                    defaultValue="100"
+                    step="0.000001"
+                    defaultValue="0"
                     className={inputClass}
                   />
                 </div>
@@ -306,16 +292,6 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
                     type="number"
                     step="0.000001"
                     defaultValue="0"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>% Fee potencia</label>
-                  <input
-                    name="pct_fee_potencia"
-                    type="number"
-                    step="0.01"
-                    defaultValue="100"
                     className={inputClass}
                   />
                 </div>
@@ -332,7 +308,7 @@ export function FormulaConfig({ configs, comercializadoras, products }: FormulaC
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Fórmula: (consumo × fee_energía × %fee_energía) + (potencia × fee_potencia × %fee_potencia) + comisión_servicio
+                Fórmula: consumo × (fee_energía + MI) + (media_potencia × fee_potencia) + comisión_servicio
               </p>
 
               <div className="flex gap-2">
