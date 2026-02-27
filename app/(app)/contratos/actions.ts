@@ -289,6 +289,10 @@ export async function createContract(
       owner_id: ownerId,
       estado: 'borrador',
       product_id: formData.get('product_id') ? Number(formData.get('product_id')) : null,
+      energy_company_id: formData.get('energy_company_id') ? Number(formData.get('energy_company_id')) : null,
+      energy_product_id: formData.get('energy_product_id') ? Number(formData.get('energy_product_id')) : null,
+      selected_fee_energia: formData.get('selected_fee_energia') ? Number(formData.get('selected_fee_energia')) : null,
+      selected_fee_potencia: formData.get('selected_fee_potencia') ? Number(formData.get('selected_fee_potencia')) : null,
       observaciones: (formData.get('observaciones') as string)?.trim() || null,
       cups: (formData.get('cups') as string)?.trim().toUpperCase() || null,
       tarifa: (formData.get('tarifa') as string)?.trim() || null,
@@ -342,6 +346,16 @@ export async function createContract(
         changed_by: userId,
       })
 
+    // Auto-calcular comisiones si tiene comercializadora y producto
+    if (insertData.energy_company_id && insertData.energy_product_id) {
+      try {
+        const { calculateContractCommissions } = await import('@/app/(app)/comisionado/actions')
+        await calculateContractCommissions(data.id)
+      } catch (calcErr) {
+        console.error('[createContract] auto-calc failed:', calcErr)
+      }
+    }
+
     return { ok: true, id: data.id }
   } catch (err) {
     if (isRedirectError(err)) throw err
@@ -379,6 +393,10 @@ export async function updateContract(
     const updateData: Record<string, unknown> = {}
     const fieldMap: Record<string, (v: string) => unknown> = {
       product_id: (v) => v ? Number(v) : null,
+      energy_company_id: (v) => v ? Number(v) : null,
+      energy_product_id: (v) => v ? Number(v) : null,
+      selected_fee_energia: (v) => v ? Number(v) : null,
+      selected_fee_potencia: (v) => v ? Number(v) : null,
       observaciones: (v) => v.trim() || null,
       cups: (v) => v.trim().toUpperCase() || null,
       tarifa: (v) => v.trim() || null,
@@ -434,6 +452,19 @@ export async function updateContract(
     if (error) {
       console.error('[updateContract]', error.message)
       return { ok: false, error: `Error al actualizar: ${error.message}` }
+    }
+
+    // Auto-calcular comisiones si hay campos relevantes
+    const commissionFields = ['energy_company_id', 'energy_product_id', 'selected_fee_energia', 'selected_fee_potencia', 'tarifa', 'consumo_anual', 'potencia_1', 'potencia_2', 'potencia_3', 'potencia_4', 'potencia_5', 'potencia_6']
+    const hasCommissionChange = commissionFields.some(f => f in updateData)
+    if (hasCommissionChange) {
+      try {
+        const { calculateContractCommissions } = await import('@/app/(app)/comisionado/actions')
+        await calculateContractCommissions(id)
+      } catch (calcErr) {
+        console.error('[updateContract] auto-calc failed:', calcErr)
+        // No fallar el update por error de cálculo
+      }
     }
 
     return { ok: true }
@@ -738,6 +769,66 @@ export async function getProducts(): Promise<Product[]> {
     .order('name')
 
   return (data ?? []) as Product[]
+}
+
+// ── 9b. getEnergyCompaniesForForm ─────────────────────────────────────────
+
+export async function getEnergyCompaniesForForm(): Promise<Array<{ id: number; name: string; commission_model: string }>> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('energy_companies')
+    .select('id, name, commission_model')
+    .eq('active', true)
+    .order('name')
+
+  return (data ?? []) as Array<{ id: number; name: string; commission_model: string }>
+}
+
+// ── 9c. getEnergyProductsForForm ─────────────────────────────────────────
+
+export async function getEnergyProductsForForm(companyId?: number): Promise<Array<{ id: number; company_id: number; name: string; fee_value: number | null; fee_label: string | null }>> {
+  const supabase = await createClient()
+  let query = supabase
+    .from('energy_products')
+    .select('id, company_id, name, fee_value, fee_label')
+    .eq('active', true)
+    .order('name')
+
+  if (companyId) {
+    query = query.eq('company_id', companyId)
+  }
+
+  const { data } = await query
+  return (data ?? []) as Array<{ id: number; company_id: number; name: string; fee_value: number | null; fee_label: string | null }>
+}
+
+// ── 9d. getFormulaConfigForProduct ────────────────────────────────────────
+
+export async function getFormulaConfigForProduct(productId: number): Promise<{
+  config: { id: number; pricing_type: string; fee_energia: number | null; fee_energia_fijo: number | null } | null
+  fee_options: Array<{ fee_type: string; value: number; label: string | null }>
+}> {
+  const supabase = await createClient()
+
+  const { data: config } = await supabase
+    .from('formula_configs')
+    .select('id, pricing_type, fee_energia, fee_energia_fijo')
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  if (!config) return { config: null, fee_options: [] }
+
+  const { data: options } = await supabase
+    .from('formula_fee_options')
+    .select('fee_type, value, label')
+    .eq('formula_config_id', config.id)
+    .order('fee_type')
+    .order('sort_order')
+
+  return {
+    config: config as { id: number; pricing_type: string; fee_energia: number | null; fee_energia_fijo: number | null },
+    fee_options: (options ?? []) as Array<{ fee_type: string; value: number; label: string | null }>,
+  }
 }
 
 // ── 10. getDevueltoCount (para badge sidebar) ────────────────────────────────

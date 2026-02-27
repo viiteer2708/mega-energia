@@ -1,36 +1,40 @@
 'use client'
 
 import { useState } from 'react'
-import { Coins, Calculator, Table2 } from 'lucide-react'
+import { Coins, Building2, Users2, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CommissionLines } from '@/components/comisionado/CommissionLines'
-import { FormulaConfig } from '@/components/comisionado/FormulaConfig'
+import { EnergyCompanyManager } from '@/components/comisionado/EnergyCompanyManager'
+import { CommissionTiersPanel } from '@/components/comisionado/CommissionTiersPanel'
 import { RateTableUpload } from '@/components/comisionado/RateTableUpload'
 import type {
   UserProfile, CommissionLineListResult,
-  CommissionFormulaConfig, Comercializadora, Product,
+  EnergyCompany, EnergyProduct, CommissionTier,
+  Comercializadora, Product,
   RateTable, RateTableUpload as RateTableUploadType,
 } from '@/lib/types'
 
-type Tab = 'lineas' | 'formulas' | 'tablas'
+type Tab = 'lineas' | 'comercializadoras' | 'comisionados' | 'tablas_legacy'
 
 interface CommissionDashboardProps {
   currentUser: UserProfile
   initialLines: CommissionLineListResult
-  configs: CommissionFormulaConfig[]
-  comercializadoras: Comercializadora[]
-  products: Product[]
+  energyCompanies: EnergyCompany[]
+  energyProducts: EnergyProduct[]
+  commissionTiers: CommissionTier[]
   rateTables: RateTable[]
   rateTableUploads: RateTableUploadType[]
+  comercializadoras: Comercializadora[]
+  products: Product[]
   isAdmin: boolean
 }
 
 export function CommissionDashboard({
   currentUser,
   initialLines,
-  configs,
-  comercializadoras,
-  products,
+  energyCompanies,
+  energyProducts,
+  commissionTiers,
   rateTables,
   rateTableUploads,
   isAdmin,
@@ -47,7 +51,7 @@ export function CommissionDashboard({
         <div>
           <h1 className="text-xl font-bold text-foreground">Comisionado</h1>
           <p className="text-sm text-muted-foreground">
-            Gestión de comisiones y pagos a la red comercial
+            Motor de comisiones — comercializadoras, fórmulas, tablas y pagos
           </p>
         </div>
       </div>
@@ -69,22 +73,34 @@ export function CommissionDashboard({
         {isAdmin && (
           <>
             <button
-              onClick={() => setTab('formulas')}
+              onClick={() => setTab('comercializadoras')}
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
-                tab === 'formulas'
+                tab === 'comercializadoras'
                   ? 'bg-primary/15 text-primary border border-primary/20'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Calculator className="h-4 w-4" />
-              Fórmulas
+              <Building2 className="h-4 w-4" />
+              Comercializadoras
             </button>
             <button
-              onClick={() => setTab('tablas')}
+              onClick={() => setTab('comisionados')}
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
-                tab === 'tablas'
+                tab === 'comisionados'
+                  ? 'bg-primary/15 text-primary border border-primary/20'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Users2 className="h-4 w-4" />
+              Comisionados
+            </button>
+            <button
+              onClick={() => setTab('tablas_legacy')}
+              className={cn(
+                'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
+                tab === 'tablas_legacy'
                   ? 'bg-primary/15 text-primary border border-primary/20'
                   : 'text-muted-foreground hover:text-foreground'
               )}
@@ -99,12 +115,13 @@ export function CommissionDashboard({
       {/* Content */}
       {tab === 'lineas' ? (
         <CommissionLines initialData={initialLines} isAdmin={isAdmin} />
-      ) : tab === 'formulas' ? (
-        <FormulaConfig
-          configs={configs}
-          comercializadoras={comercializadoras}
-          products={products}
+      ) : tab === 'comercializadoras' ? (
+        <EnergyCompanyManager
+          companies={energyCompanies}
+          products={energyProducts}
         />
+      ) : tab === 'comisionados' ? (
+        <CommissionTiersPanel tiers={commissionTiers} />
       ) : (
         <RateTableUpload
           rateTables={rateTables}

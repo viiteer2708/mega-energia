@@ -3,11 +3,13 @@ import { getSession } from '@/lib/session'
 import { ROLES_CAN_VIEW_COMMISSIONS } from '@/lib/types'
 import {
   getCommissionLines,
-  getFormulaConfigs,
-  getComercializadoras,
-  getProducts,
+  getEnergyCompanies,
+  getEnergyProducts,
+  getCommissionTiers,
   getRateTables,
   getRateTableUploadHistory,
+  getComercializadoras,
+  getProducts,
 } from './actions'
 import { CommissionDashboard } from '@/components/comisionado/CommissionDashboard'
 
@@ -19,25 +21,37 @@ export default async function ComisionadoPage() {
 
   const isAdmin = user.role === 'ADMIN'
 
-  // Fetch paralelo — configs/comercializadoras/products/rateTables solo para ADMIN
-  const [linesResult, configs, comercializadoras, products, rateTables, rateTableUploads] = await Promise.all([
+  const [
+    linesResult,
+    energyCompanies,
+    energyProducts,
+    commissionTiers,
+    rateTables,
+    rateTableUploads,
+    comercializadoras,
+    products,
+  ] = await Promise.all([
     getCommissionLines(),
-    isAdmin ? getFormulaConfigs() : Promise.resolve([]),
-    isAdmin ? getComercializadoras() : Promise.resolve([]),
-    isAdmin ? getProducts() : Promise.resolve([]),
+    isAdmin ? getEnergyCompanies() : Promise.resolve([]),
+    isAdmin ? getEnergyProducts() : Promise.resolve([]),
+    isAdmin ? getCommissionTiers() : Promise.resolve([]),
     isAdmin ? getRateTables() : Promise.resolve([]),
     isAdmin ? getRateTableUploadHistory() : Promise.resolve([]),
+    isAdmin ? getComercializadoras() : Promise.resolve([]),
+    isAdmin ? getProducts() : Promise.resolve([]),
   ])
 
   return (
     <CommissionDashboard
       currentUser={user}
       initialLines={linesResult}
-      configs={configs}
-      comercializadoras={comercializadoras}
-      products={products}
+      energyCompanies={energyCompanies}
+      energyProducts={energyProducts}
+      commissionTiers={commissionTiers}
       rateTables={rateTables}
       rateTableUploads={rateTableUploads}
+      comercializadoras={comercializadoras}
+      products={products}
       isAdmin={isAdmin}
     />
   )

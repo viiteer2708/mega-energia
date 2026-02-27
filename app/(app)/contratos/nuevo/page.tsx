@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
-import { getProducts, getAssignableUsers } from '../actions'
+import { getProducts, getAssignableUsers, getEnergyCompaniesForForm, getEnergyProductsForForm } from '../actions'
 import { ContratoForm } from '@/components/contratos/ContratoForm'
 
 export default async function NuevoContratoPage() {
@@ -9,9 +9,11 @@ export default async function NuevoContratoPage() {
 
   const isAdminOrBo = user.role === 'ADMIN' || user.role === 'BACKOFFICE'
 
-  const [products, assignableUsers] = await Promise.all([
+  const [products, assignableUsers, energyCompanies, energyProducts] = await Promise.all([
     getProducts(),
     isAdminOrBo ? getAssignableUsers() : Promise.resolve(undefined),
+    getEnergyCompaniesForForm(),
+    getEnergyProductsForForm(),
   ])
 
   return (
@@ -21,6 +23,8 @@ export default async function NuevoContratoPage() {
         mode="create"
         user={user}
         products={products}
+        energyCompanies={energyCompanies}
+        energyProducts={energyProducts}
         assignableUsers={assignableUsers}
       />
     </div>

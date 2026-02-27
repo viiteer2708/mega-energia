@@ -1,5 +1,10 @@
 export type Role = 'ADMIN' | 'BACKOFFICE' | 'DIRECTOR' | 'KAM' | 'CANAL' | 'COMERCIAL'
 export type CommissionType = 'partner' | 'master' | 'distribuidor' | 'otro'
+export type CommissionModel = 'table' | 'formula'
+export type PricingType = 'indexado' | 'fijo'
+export type PotenciaCalcMethod = 'sum_periods' | 'average'
+export type OverrideType = 'percentage' | 'fixed'
+export type FeeType = 'energia' | 'potencia'
 
 export interface UserProfile {
   id: string
@@ -26,6 +31,7 @@ export interface UserProfile {
   // Configuración comercial
   commission_type?: CommissionType
   commission_pct?: number | null
+  commission_tier_id?: number | null
   wallet_personal?: number
   wallet_family?: number
 }
@@ -437,6 +443,14 @@ export interface Contract {
   // Bloque D
   fecha_entrega_contrato: string | null
   fecha_cobro_distribuidor: string | null
+  // Comisiones v2
+  energy_company_id: number | null
+  energy_product_id: number | null
+  selected_fee_energia: number | null
+  selected_fee_potencia: number | null
+  gross_commission: number | null
+  gnew_margin: number | null
+  payout_partner_base: number | null
   // Bloque E.1 (solo ADMIN)
   commission_gnew: number
   decomission_gnew: number
@@ -469,6 +483,10 @@ export interface ContractCommission {
   status_pago: PagoStatus
   fecha_pago: string | null
   notes: string | null
+  tier_name: string | null
+  rate_applied: number | null
+  is_differential: boolean
+  differential_from_user_id: string | null
   created_at: string
   updated_at: string
   // Join opcional
@@ -523,6 +541,10 @@ export interface ContractFormData {
   // Bloque A
   product_id?: number | null
   campaign_id?: number | null
+  energy_company_id?: number | null
+  energy_product_id?: number | null
+  selected_fee_energia?: number | null
+  selected_fee_potencia?: number | null
   observaciones?: string
   owner_id?: string
   // Bloque B
@@ -687,6 +709,9 @@ export interface CommissionLineItem {
   status_pago: PagoStatus
   fecha_pago: string | null
   notes: string | null
+  tier_name: string | null
+  rate_applied: number | null
+  is_differential: boolean
   created_at: string
   updated_at: string
   // Joins del contrato
@@ -792,4 +817,116 @@ export interface ParsedRateTableSheet {
 export interface ParsedRateTable {
   comercializadora: string
   sheets: ParsedRateTableSheet[]
+}
+
+// ── Motor de Comisiones v2 ──────────────────────────────────────────────────
+
+export interface EnergyCompany {
+  id: number
+  name: string
+  commission_model: CommissionModel
+  gnew_margin_pct: number
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface EnergyProduct {
+  id: number
+  company_id: number
+  name: string
+  fee_value: number | null
+  fee_label: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+  // Joins opcionales
+  company_name?: string
+}
+
+export interface CommissionRate {
+  id: number
+  product_id: number
+  tariff: string
+  consumption_min: number
+  consumption_max: number
+  gross_amount: number
+  created_at: string
+  updated_at: string
+  // Joins opcionales
+  product_name?: string
+}
+
+export interface FormulaConfig {
+  id: number
+  product_id: number
+  pricing_type: PricingType
+  fee_energia: number | null
+  fee_energia_fijo: number | null
+  margen_intermediacion: number
+  fee_potencia: number | null
+  potencia_calc_method: PotenciaCalcMethod
+  comision_servicio: number
+  factor_potencia: number
+  factor_energia: number
+  created_at: string
+  updated_at: string
+  // Joins opcionales
+  product_name?: string
+}
+
+export interface FormulaFeeOption {
+  id: number
+  formula_config_id: number
+  fee_type: FeeType
+  value: number
+  label: string | null
+  sort_order: number
+}
+
+export interface CommissionTier {
+  id: number
+  name: string
+  rate_pct: number | null
+  sort_order: number
+}
+
+export interface UserCommissionOverride {
+  id: number
+  user_id: string
+  product_id: number | null
+  override_type: OverrideType
+  override_value: number
+  set_by_user_id: string
+  created_at: string
+  updated_at: string
+  // Joins opcionales
+  user_name?: string
+  product_name?: string
+}
+
+export const COMMISSION_TIER_LABELS: Record<string, string> = {
+  PARTNER: 'Partner (100%)',
+  MASTER: 'Master (95%)',
+  DISTRIBUIDOR: 'Distribuidor (85%)',
+  EXCLUSIVE: 'Exclusive (110%)',
+  VIP: 'VIP (importe fijo)',
+}
+
+/** Datos parseados del Excel de comisiones v2 */
+export interface ParsedCommissionExcel {
+  company_name: string
+  commission_model: CommissionModel
+  gnew_margin_pct: number
+  products: Array<{
+    name: string
+    fee_value: number | null
+    fee_label: string | null
+    tariff: string
+    rates: Array<{
+      consumption_min: number
+      consumption_max: number
+      gross_amount: number
+    }>
+  }>
 }

@@ -13,7 +13,7 @@ import { RevisionCard } from '@/components/contratos/RevisionCard'
 import { DuplicateWarning } from '@/components/contratos/DuplicateWarning'
 import { createContract, saveDraft, changeState, uploadDocument } from '@/app/(app)/contratos/actions'
 import { isValidDNI, isValidCUPS, isValidPhone, isValidEmail } from '@/lib/validations/validators'
-import type { UserProfile, Product, ContractEstado, DocUploadMode, AssignableUser } from '@/lib/types'
+import type { UserProfile, Product, ContractEstado, DocUploadMode, AssignableUser, EnergyCompany, EnergyProduct } from '@/lib/types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,8 @@ interface ContratoFormProps {
   mode: 'create' | 'edit'
   user: UserProfile
   products: Product[]
+  energyCompanies?: Array<{ id: number; name: string; commission_model: string }>
+  energyProducts?: Array<{ id: number; company_id: number; name: string; fee_value: number | null; fee_label: string | null }>
   contractId?: string
   defaultValues?: Record<string, unknown>
   editableFields?: string[]
@@ -46,7 +48,8 @@ const emptySuministro: SuministroData = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ContratoForm({
-  mode, user, products, contractId, defaultValues,
+  mode, user, products, energyCompanies, energyProducts,
+  contractId, defaultValues,
   editableFields, visibleFields, devueltoMotivo, devueltoCampos,
   assignableUsers,
 }: ContratoFormProps) {
@@ -64,6 +67,10 @@ export function ContratoForm({
   const [titular, setTitular] = useState<TitularData>(emptyTitular)
   const [suministro, setSuministro] = useState<SuministroData>(emptySuministro)
   const [docs, setDocs] = useState<{ mode: DocUploadMode; files: DocFile[] }>({ mode: 'single', files: [] })
+  const [energyCompanyId, setEnergyCompanyId] = useState<number | null>(null)
+  const [energyProductId, setEnergyProductId] = useState<number | null>(null)
+  const [selectedFeeEnergia, setSelectedFeeEnergia] = useState<number | null>(null)
+  const [selectedFeePotencia, setSelectedFeePotencia] = useState<number | null>(null)
   const [ownerId, setOwnerId] = useState(user.id)
   const [operadorId, setOperadorId] = useState('')
 
@@ -143,10 +150,14 @@ export function ContratoForm({
 
   const collectFormData = useCallback(() => ({
     ...titular, ...suministro, comercializadora, product_id: productId, observaciones,
+    energy_company_id: energyCompanyId,
+    energy_product_id: energyProductId,
+    selected_fee_energia: selectedFeeEnergia,
+    selected_fee_potencia: selectedFeePotencia,
     doc_upload_mode: docs.mode,
     ...(showOwnerSelector ? { owner_id: ownerId } : {}),
     ...(showOperadorSelector && operadorId ? { operador_id: operadorId } : {}),
-  }), [titular, suministro, comercializadora, productId, observaciones, docs.mode, ownerId, operadorId, showOwnerSelector, showOperadorSelector])
+  }), [titular, suministro, comercializadora, productId, observaciones, energyCompanyId, energyProductId, selectedFeeEnergia, selectedFeePotencia, docs.mode, ownerId, operadorId, showOwnerSelector, showOperadorSelector])
 
   const handleSaveDraft = useCallback(async () => {
     setSaving(true)
@@ -301,7 +312,17 @@ export function ContratoForm({
         ownerId={ownerId} onOwnerChange={setOwnerId}
         showOperadorSelector={showOperadorSelector} operadores={assignableUsers}
         operadorId={operadorId} onOperadorChange={setOperadorId}
-        userRole={user.role} operadorName="" />
+        userRole={user.role} operadorName=""
+        energyCompanies={energyCompanies}
+        energyProducts={energyProducts}
+        energyCompanyId={energyCompanyId}
+        energyProductId={energyProductId}
+        selectedFeeEnergia={selectedFeeEnergia}
+        selectedFeePotencia={selectedFeePotencia}
+        onEnergyCompanyChange={setEnergyCompanyId}
+        onEnergyProductChange={setEnergyProductId}
+        onFeeEnergiaChange={setSelectedFeeEnergia}
+        onFeePotenciaChange={setSelectedFeePotencia} />
 
       {/* Stepper */}
       <WizardStepper steps={steps} currentStep={step} onStepClick={(i) => goToStep(i)} progress={progress} />

@@ -5,7 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import type {
   Role, PagoStatus, CommissionLineFilters, CommissionLineListResult,
-  CommissionLineItem, CommissionFormulaConfig,
+  CommissionLineItem, EnergyCompany, EnergyProduct, CommissionRate,
+  FormulaConfig, FormulaFeeOption, CommissionTier,
+  UserCommissionOverride, CommissionModel, ParsedCommissionExcel,
   Comercializadora, Product, RateTable, RateTableUpload,
   ParsedRateTable, ProductTipo,
 } from '@/lib/types'
@@ -15,10 +17,6 @@ import type {
 interface ActionResult {
   ok: boolean
   error?: string
-}
-
-interface FormulaCalcResult extends ActionResult {
-  contractsUpdated?: number
 }
 
 const PAGE_SIZE = 20
@@ -58,7 +56,8 @@ export async function getCommissionLines(
     .from('contract_commissions')
     .select(`
       id, contract_id, user_id, commission_paid, decomission,
-      status_pago, fecha_pago, notes, created_at, updated_at,
+      status_pago, fecha_pago, notes, tier_name, rate_applied, is_differential,
+      created_at, updated_at,
       contract:contracts!contract_commissions_contract_id_fkey(
         cups, titular_contrato, su_ref, commission_gnew, status_commission_gnew
       ),
@@ -67,7 +66,6 @@ export async function getCommissionLines(
       )
     `, { count: 'exact' })
 
-  // Filtros
   if (filters.status_pago) {
     query = query.eq('status_pago', filters.status_pago)
   }
@@ -109,6 +107,9 @@ export async function getCommissionLines(
       status_pago: row.status_pago as PagoStatus,
       fecha_pago: row.fecha_pago as string | null,
       notes: row.notes as string | null,
+      tier_name: row.tier_name as string | null,
+      rate_applied: row.rate_applied as number | null,
+      is_differential: row.is_differential as boolean,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
       cups: contract?.cups ?? null,
@@ -120,7 +121,6 @@ export async function getCommissionLines(
       user_role: (user?.role ?? 'COMERCIAL') as Role,
     }
 
-    // BACKOFFICE no ve commission_gnew
     if (role !== 'ADMIN') {
       line.commission_gnew = 0
     }
@@ -128,7 +128,6 @@ export async function getCommissionLines(
     return line
   })
 
-  // Filtrar por búsqueda en cliente (titular/CUPS) — post-query para simplificar
   let filteredLines = lines
   if (filters.search) {
     const search = filters.search.toLowerCase()
@@ -177,7 +176,6 @@ export async function updateCommissionLineStatus(
     return { ok: false, error: error.message }
   }
 
-  // Audit log
   await admin.from('audit_log').insert({
     user_id: auth.userId,
     action: 'commission_status_change',
@@ -223,46 +221,1002 @@ export async function applyDecomission(
   return { ok: true }
 }
 
-// ── 4. recalculateCommissionPaid (helper interno) ────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// MOTOR DE COMISIONES v2 — CRUD
+// ═══════════════════════════════════════════════════════════════════
 
-async function recalculateCommissionPaid(
-  admin: ReturnType<typeof getAdminClient>,
-  contractId: string,
-  commissionGnew: number
-): Promise<void> {
-  // Obtener owner del contrato y su commission_pct
+// ── 4. Energy Companies ──────────────────────────────────────────────────────
+
+export async function getEnergyCompanies(): Promise<EnergyCompany[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('energy_companies')
+    .select('*')
+    .eq('active', true)
+    .order('name')
+
+  return (data ?? []) as EnergyCompany[]
+}
+
+export async function createEnergyCompany(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede crear comercializadoras.' }
+  }
+
+  const name = (formData.get('name') as string)?.trim()
+  const commissionModel = (formData.get('commission_model') as string) || 'table'
+  const gnewMarginPct = Number(formData.get('gnew_margin_pct') || 0)
+
+  if (!name) return { ok: false, error: 'El nombre es obligatorio.' }
+
+  const admin = getAdminClient()
+  const { error } = await admin
+    .from('energy_companies')
+    .insert({
+      name,
+      commission_model: commissionModel,
+      gnew_margin_pct: gnewMarginPct,
+    })
+
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: 'Ya existe una comercializadora con ese nombre.' }
+    return { ok: false, error: error.message }
+  }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+export async function updateEnergyCompany(
+  id: number,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede editar comercializadoras.' }
+  }
+
+  const admin = getAdminClient()
+  const updateData: Record<string, unknown> = {}
+
+  const name = formData.get('name') as string | null
+  if (name?.trim()) updateData.name = name.trim()
+
+  const model = formData.get('commission_model') as string | null
+  if (model) updateData.commission_model = model
+
+  const margin = formData.get('gnew_margin_pct') as string | null
+  if (margin !== null) updateData.gnew_margin_pct = Number(margin)
+
+  const active = formData.get('active') as string | null
+  if (active !== null) updateData.active = active === 'true'
+
+  const { error } = await admin
+    .from('energy_companies')
+    .update(updateData)
+    .eq('id', id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ── 5. Energy Products ──────────────────────────────────────────────────────
+
+export async function getEnergyProducts(companyId?: number): Promise<EnergyProduct[]> {
+  const supabase = await createClient()
+
+  let query = supabase
+    .from('energy_products')
+    .select('*, company:energy_companies!energy_products_company_id_fkey(name)')
+    .eq('active', true)
+    .order('name')
+
+  if (companyId) {
+    query = query.eq('company_id', companyId)
+  }
+
+  const { data } = await query
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const company = row.company as { name: string } | null
+    return {
+      id: row.id as number,
+      company_id: row.company_id as number,
+      name: row.name as string,
+      fee_value: row.fee_value as number | null,
+      fee_label: row.fee_label as string | null,
+      active: row.active as boolean,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+      company_name: company?.name,
+    } satisfies EnergyProduct
+  })
+}
+
+export async function createEnergyProduct(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede crear productos.' }
+  }
+
+  const companyId = Number(formData.get('company_id'))
+  const name = (formData.get('name') as string)?.trim()
+  const feeValue = formData.get('fee_value') ? Number(formData.get('fee_value')) : null
+  const feeLabel = (formData.get('fee_label') as string)?.trim() || null
+
+  if (!companyId || !name) return { ok: false, error: 'Comercializadora y nombre son obligatorios.' }
+
+  const admin = getAdminClient()
+  const { error } = await admin
+    .from('energy_products')
+    .insert({ company_id: companyId, name, fee_value: feeValue, fee_label: feeLabel })
+
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: 'Ya existe este producto para esta comercializadora.' }
+    return { ok: false, error: error.message }
+  }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+export async function updateEnergyProduct(
+  id: number,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede editar productos.' }
+  }
+
+  const admin = getAdminClient()
+  const updateData: Record<string, unknown> = {}
+
+  const name = formData.get('name') as string | null
+  if (name?.trim()) updateData.name = name.trim()
+
+  const feeValue = formData.get('fee_value') as string | null
+  if (feeValue !== null) updateData.fee_value = feeValue ? Number(feeValue) : null
+
+  const feeLabel = formData.get('fee_label') as string | null
+  if (feeLabel !== null) updateData.fee_label = feeLabel?.trim() || null
+
+  const active = formData.get('active') as string | null
+  if (active !== null) updateData.active = active === 'true'
+
+  const { error } = await admin
+    .from('energy_products')
+    .update(updateData)
+    .eq('id', id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ── 6. Commission Rates (modelo TABLE) ──────────────────────────────────────
+
+export async function getCommissionRates(productId?: number): Promise<CommissionRate[]> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') return []
+
+  let query = auth.supabase
+    .from('commission_rates')
+    .select('*, product:energy_products!commission_rates_product_id_fkey(name)')
+    .order('tariff')
+    .order('consumption_min')
+
+  if (productId) {
+    query = query.eq('product_id', productId)
+  }
+
+  const { data } = await query
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const product = row.product as { name: string } | null
+    return {
+      id: row.id as number,
+      product_id: row.product_id as number,
+      tariff: row.tariff as string,
+      consumption_min: row.consumption_min as number,
+      consumption_max: row.consumption_max as number,
+      gross_amount: row.gross_amount as number,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+      product_name: product?.name,
+    } satisfies CommissionRate
+  })
+}
+
+// ── 7. Formula Configs (modelo FORMULA) ─────────────────────────────────────
+
+export async function getFormulaConfigs(companyId?: number): Promise<FormulaConfig[]> {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('formula_configs')
+    .select('*, product:energy_products!formula_configs_product_id_fkey(name, company_id)')
+    .order('product_id')
+
+  return (data ?? [])
+    .filter((row: Record<string, unknown>) => {
+      if (!companyId) return true
+      const product = row.product as { company_id: number } | null
+      return product?.company_id === companyId
+    })
+    .map((row: Record<string, unknown>) => {
+      const product = row.product as { name: string } | null
+      return {
+        id: row.id as number,
+        product_id: row.product_id as number,
+        pricing_type: row.pricing_type as FormulaConfig['pricing_type'],
+        fee_energia: row.fee_energia as number | null,
+        fee_energia_fijo: row.fee_energia_fijo as number | null,
+        margen_intermediacion: row.margen_intermediacion as number,
+        fee_potencia: row.fee_potencia as number | null,
+        potencia_calc_method: row.potencia_calc_method as FormulaConfig['potencia_calc_method'],
+        comision_servicio: row.comision_servicio as number,
+        factor_potencia: row.factor_potencia as number,
+        factor_energia: row.factor_energia as number,
+        created_at: row.created_at as string,
+        updated_at: row.updated_at as string,
+        product_name: product?.name,
+      } satisfies FormulaConfig
+    })
+}
+
+export async function upsertFormulaConfig(
+  productId: number,
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede configurar fórmulas.' }
+  }
+
+  const admin = getAdminClient()
+
+  const configData = {
+    product_id: productId,
+    pricing_type: (formData.get('pricing_type') as string) || 'indexado',
+    fee_energia: formData.get('fee_energia') ? Number(formData.get('fee_energia')) : null,
+    fee_energia_fijo: formData.get('fee_energia_fijo') ? Number(formData.get('fee_energia_fijo')) : null,
+    margen_intermediacion: Number(formData.get('margen_intermediacion') || 0),
+    fee_potencia: formData.get('fee_potencia') ? Number(formData.get('fee_potencia')) : null,
+    potencia_calc_method: (formData.get('potencia_calc_method') as string) || 'sum_periods',
+    comision_servicio: Number(formData.get('comision_servicio') || 0),
+    factor_potencia: Number(formData.get('factor_potencia') || 1),
+    factor_energia: Number(formData.get('factor_energia') || 1),
+  }
+
+  const { error } = await admin
+    .from('formula_configs')
+    .upsert(configData, { onConflict: 'product_id' })
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ── 8. Formula Fee Options ──────────────────────────────────────────────────
+
+export async function getFormulaFeeOptions(configId: number): Promise<FormulaFeeOption[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('formula_fee_options')
+    .select('*')
+    .eq('formula_config_id', configId)
+    .order('fee_type')
+    .order('sort_order')
+
+  return (data ?? []) as FormulaFeeOption[]
+}
+
+export async function getFeeOptionsForProduct(productId: number): Promise<FormulaFeeOption[]> {
+  const supabase = await createClient()
+
+  // Buscar la formula_config de este producto
+  const { data: config } = await supabase
+    .from('formula_configs')
+    .select('id')
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  if (!config) return []
+
+  const { data } = await supabase
+    .from('formula_fee_options')
+    .select('*')
+    .eq('formula_config_id', config.id)
+    .order('fee_type')
+    .order('sort_order')
+
+  return (data ?? []) as FormulaFeeOption[]
+}
+
+export async function saveFeeOptions(
+  configId: number,
+  feeType: 'energia' | 'potencia',
+  options: Array<{ value: number; label: string | null }>
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede editar opciones de fee.' }
+  }
+
+  const admin = getAdminClient()
+
+  // Borrar opciones existentes de este tipo
+  await admin
+    .from('formula_fee_options')
+    .delete()
+    .eq('formula_config_id', configId)
+    .eq('fee_type', feeType)
+
+  // Insertar nuevas
+  if (options.length > 0) {
+    const inserts = options.map((opt, i) => ({
+      formula_config_id: configId,
+      fee_type: feeType,
+      value: opt.value,
+      label: opt.label,
+      sort_order: i,
+    }))
+
+    const { error } = await admin
+      .from('formula_fee_options')
+      .insert(inserts)
+
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ── 9. Commission Tiers ─────────────────────────────────────────────────────
+
+export async function getCommissionTiers(): Promise<CommissionTier[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('commission_tiers')
+    .select('*')
+    .order('sort_order')
+
+  return (data ?? []) as CommissionTier[]
+}
+
+export async function upsertCommissionTier(
+  formData: FormData
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede editar comisionados.' }
+  }
+
+  const admin = getAdminClient()
+  const id = formData.get('id') ? Number(formData.get('id')) : null
+  const name = (formData.get('name') as string)?.trim().toUpperCase()
+  const ratePct = formData.get('rate_pct') ? Number(formData.get('rate_pct')) : null
+  const sortOrder = Number(formData.get('sort_order') || 0)
+
+  if (!name) return { ok: false, error: 'El nombre es obligatorio.' }
+
+  if (id) {
+    const { error } = await admin
+      .from('commission_tiers')
+      .update({ name, rate_pct: ratePct, sort_order: sortOrder })
+      .eq('id', id)
+    if (error) return { ok: false, error: error.message }
+  } else {
+    const { error } = await admin
+      .from('commission_tiers')
+      .insert({ name, rate_pct: ratePct, sort_order: sortOrder })
+    if (error) return { ok: false, error: error.message }
+  }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ── 10. User Commission Overrides ───────────────────────────────────────────
+
+export async function getUserOverrides(userId: string): Promise<UserCommissionOverride[]> {
+  const auth = await getAuthProfile()
+  if (!auth) return []
+
+  const { data } = await auth.supabase
+    .from('user_commission_overrides')
+    .select('*, user:profiles!user_commission_overrides_user_id_fkey(full_name), product:energy_products!user_commission_overrides_product_id_fkey(name)')
+    .eq('user_id', userId)
+    .order('product_id', { nullsFirst: true })
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const user = row.user as { full_name: string } | null
+    const product = row.product as { name: string } | null
+    return {
+      id: row.id as number,
+      user_id: row.user_id as string,
+      product_id: row.product_id as number | null,
+      override_type: row.override_type as UserCommissionOverride['override_type'],
+      override_value: row.override_value as number,
+      set_by_user_id: row.set_by_user_id as string,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+      user_name: user?.full_name,
+      product_name: product?.name,
+    } satisfies UserCommissionOverride
+  })
+}
+
+export async function setUserOverride(
+  userId: string,
+  productId: number | null,
+  overrideType: 'percentage' | 'fixed',
+  overrideValue: number
+): Promise<ActionResult> {
+  const auth = await getAuthProfile()
+  if (!auth) return { ok: false, error: 'No autenticado.' }
+
+  const admin = getAdminClient()
+
+  const { error } = await admin
+    .from('user_commission_overrides')
+    .upsert(
+      {
+        user_id: userId,
+        product_id: productId,
+        override_type: overrideType,
+        override_value: overrideValue,
+        set_by_user_id: auth.userId,
+      },
+      { onConflict: 'user_id,product_id' }
+    )
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/comisionado')
+  return { ok: true }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOTOR DE CÁLCULO AUTOMÁTICO
+// ═══════════════════════════════════════════════════════════════════
+
+// ── 11. calculateContractCommissions ────────────────────────────────────────
+
+interface CalcResult extends ActionResult {
+  gross_commission?: number
+  gnew_margin?: number
+  payout_partner_base?: number
+}
+
+export async function calculateContractCommissions(contractId: string): Promise<CalcResult> {
+  const admin = getAdminClient()
+
+  // Obtener contrato completo
   const { data: contract } = await admin
     .from('contracts')
-    .select('owner_id')
+    .select('*')
     .eq('id', contractId)
     .single()
 
-  if (!contract) return
+  if (!contract) return { ok: false, error: 'Contrato no encontrado.' }
 
-  const { data: owner } = await admin
-    .from('profiles')
-    .select('id, commission_pct')
-    .eq('id', contract.owner_id)
+  const companyId = contract.energy_company_id as number | null
+  const productId = contract.energy_product_id as number | null
+
+  if (!companyId || !productId) {
+    return { ok: false, error: 'Faltan comercializadora o producto energético.' }
+  }
+
+  // Obtener comercializadora
+  const { data: company } = await admin
+    .from('energy_companies')
+    .select('*')
+    .eq('id', companyId)
     .single()
 
-  if (!owner) return
+  if (!company) return { ok: false, error: 'Comercializadora no encontrada.' }
 
-  const pct = (owner.commission_pct as number) ?? 0
-  const paid = commissionGnew * (pct / 100)
+  const model = company.commission_model as CommissionModel
+  const tarifa = contract.tarifa as string | null
+  const consumoAnual = Number(contract.consumo_anual ?? 0)
+
+  let grossCommission = 0
+  let commissionGnew = 0
+  let payoutPartnerBase = 0
+
+  // ═══════════════════════════════════════════════
+  // PASO 1: COMISIÓN BRUTA
+  // ═══════════════════════════════════════════════
+
+  if (model === 'table') {
+    if (!tarifa || !consumoAnual) {
+      return { ok: false, error: 'Faltan tarifa o consumo anual para modelo tabla.' }
+    }
+
+    const { data: rate } = await admin
+      .from('commission_rates')
+      .select('gross_amount')
+      .eq('product_id', productId)
+      .eq('tariff', tarifa)
+      .lte('consumption_min', consumoAnual)
+      .gte('consumption_max', consumoAnual)
+      .limit(1)
+      .maybeSingle()
+
+    if (!rate) {
+      return { ok: false, error: `No hay comisión para producto ${productId}, tarifa ${tarifa}, consumo ${consumoAnual}.` }
+    }
+
+    grossCommission = Number(rate.gross_amount)
+
+  } else if (model === 'formula') {
+    const { data: config } = await admin
+      .from('formula_configs')
+      .select('*')
+      .eq('product_id', productId)
+      .maybeSingle()
+
+    if (!config) {
+      return { ok: false, error: 'Producto sin configuración de fórmula.' }
+    }
+
+    const feeEne = Number(contract.selected_fee_energia ?? config.fee_energia ?? 0)
+    const feePot = Number(contract.selected_fee_potencia ?? config.fee_potencia ?? 0)
+    const mi = Number(config.margen_intermediacion ?? 0)
+    const factorEnergia = Number(config.factor_energia ?? 1)
+    const factorPotencia = Number(config.factor_potencia ?? 1)
+    const comServicio = Number(config.comision_servicio ?? 0)
+    const pricingType = config.pricing_type as string
+
+    // Componente ENERGÍA
+    let comEnergia: number
+    if (pricingType === 'fijo') {
+      comEnergia = consumoAnual * Number(config.fee_energia_fijo ?? 0)
+    } else {
+      comEnergia = consumoAnual * (feeEne + mi)
+    }
+
+    // Componente POTENCIA
+    let comPotencia = 0
+    const calcMethod = config.potencia_calc_method as string
+
+    if (calcMethod === 'sum_periods') {
+      // Sumar CADA potencia × fee
+      const potencias = [
+        contract.potencia_1, contract.potencia_2, contract.potencia_3,
+        contract.potencia_4, contract.potencia_5, contract.potencia_6,
+      ]
+      for (const p of potencias) {
+        if (p != null) {
+          comPotencia += Number(p) * feePot
+        }
+      }
+    } else {
+      // average: media_potencia × fee
+      comPotencia = Number(contract.media_potencia ?? 0) * feePot
+    }
+
+    // Aplicar factores de ajuste
+    const comEnergiaAjustada = comEnergia * factorEnergia
+    const comPotenciaAjustada = comPotencia * factorPotencia
+
+    grossCommission = comPotenciaAjustada + comEnergiaAjustada + comServicio
+  }
+
+  grossCommission = Math.round(grossCommission * 100) / 100
+
+  // ═══════════════════════════════════════════════
+  // PASO 2: MARGEN GNEW
+  // ═══════════════════════════════════════════════
+
+  if (model === 'table') {
+    const gnewMarginPct = Number(company.gnew_margin_pct ?? 0)
+    const gnewMargin = grossCommission * gnewMarginPct
+    commissionGnew = Math.round(gnewMargin * 100) / 100
+    payoutPartnerBase = Math.round((grossCommission - gnewMargin) * 100) / 100
+  } else {
+    // En modelo fórmula: GNEW cobra por fórmula, GNEW paga por tabla (SIEMPRE)
+    commissionGnew = grossCommission
+
+    // El payout a la red SIEMPRE viene de commission_rates (tabla)
+    if (!tarifa || !consumoAnual) {
+      return { ok: false, error: 'Faltan tarifa o consumo anual para calcular payout.' }
+    }
+
+    const { data: payoutRate } = await admin
+      .from('commission_rates')
+      .select('gross_amount')
+      .eq('product_id', productId)
+      .eq('tariff', tarifa)
+      .lte('consumption_min', consumoAnual)
+      .gte('consumption_max', consumoAnual)
+      .limit(1)
+      .maybeSingle()
+
+    if (!payoutRate) {
+      return { ok: false, error: `No hay tabla de payout definida para producto ${productId}, tarifa ${tarifa}, rango ${consumoAnual} kWh. Configure commission_rates para este producto.` }
+    }
+
+    payoutPartnerBase = Number(payoutRate.gross_amount)
+  }
+
+  // ═══════════════════════════════════════════════
+  // PASO 3: GUARDAR EN CONTRATO
+  // ═══════════════════════════════════════════════
 
   await admin
-    .from('contract_commissions')
-    .upsert(
-      {
-        contract_id: contractId,
-        user_id: owner.id,
-        commission_paid: Math.round(paid * 10000) / 10000,
-      },
-      { onConflict: 'contract_id,user_id' }
-    )
+    .from('contracts')
+    .update({
+      gross_commission: grossCommission,
+      gnew_margin: commissionGnew,
+      commission_gnew: commissionGnew,
+      payout_partner_base: payoutPartnerBase,
+      status_commission_gnew: model === 'table' ? 'cargada_excel' : 'calculada_formula',
+    })
+    .eq('id', contractId)
+
+  // ═══════════════════════════════════════════════
+  // PASO 4: COMISIONES DE LA RED
+  // ═══════════════════════════════════════════════
+
+  await calculateNetworkCommissions(admin, contractId, contract.owner_id as string, payoutPartnerBase, commissionGnew)
+
+  revalidatePath('/comisionado')
+  revalidatePath(`/contratos/${contractId}`)
+  return { ok: true, gross_commission: grossCommission, gnew_margin: commissionGnew, payout_partner_base: payoutPartnerBase }
 }
 
-// ── 5. getComercializadoras ─────────────────────────────────────────────────
+// ── 12. calculateNetworkCommissions (cascada jerárquica) ────────────────────
+
+async function calculateNetworkCommissions(
+  admin: ReturnType<typeof getAdminClient>,
+  contractId: string,
+  ownerId: string,
+  payoutPartnerBase: number,
+  commissionGnew: number
+): Promise<void> {
+  // Borrar comisiones anteriores de este contrato
+  await admin
+    .from('contract_commissions')
+    .delete()
+    .eq('contract_id', contractId)
+
+  // Obtener la cadena jerárquica: owner + ancestros
+  const chain = await getHierarchyChain(admin, ownerId)
+  if (chain.length === 0) return
+
+  // Obtener contrato para product_id
+  const { data: contract } = await admin
+    .from('contracts')
+    .select('energy_product_id')
+    .eq('id', contractId)
+    .single()
+
+  const productId = contract?.energy_product_id as number | null
+
+  let comisionNivelInferior: number | null = null
+
+  for (let i = 0; i < chain.length; i++) {
+    const user = chain[i]
+    const comisionEfectiva = await calculateUserCommission(admin, user.id, productId, payoutPartnerBase, user.tier_name, user.tier_rate_pct)
+
+    if (i === 0) {
+      // El owner cobra su comisión completa
+      await admin.from('contract_commissions').insert({
+        contract_id: contractId,
+        user_id: user.id,
+        commission_paid: Math.round(comisionEfectiva * 100) / 100,
+        tier_name: user.tier_name,
+        rate_applied: user.tier_rate_pct,
+        is_differential: false,
+      })
+      comisionNivelInferior = comisionEfectiva
+    } else {
+      // Los superiores cobran diferencial
+      const diferencial = comisionEfectiva - (comisionNivelInferior ?? 0)
+      if (diferencial > 0) {
+        await admin.from('contract_commissions').insert({
+          contract_id: contractId,
+          user_id: user.id,
+          commission_paid: Math.round(diferencial * 100) / 100,
+          tier_name: user.tier_name,
+          rate_applied: user.tier_rate_pct,
+          is_differential: true,
+          differential_from_user_id: chain[i - 1].id,
+        })
+      }
+      comisionNivelInferior = comisionEfectiva
+    }
+  }
+
+  // Calcular beneficio GNEW
+  const { data: allCommissions } = await admin
+    .from('contract_commissions')
+    .select('commission_paid')
+    .eq('contract_id', contractId)
+
+  const totalPaid = (allCommissions ?? []).reduce((sum, c) => sum + Number(c.commission_paid), 0)
+  const beneficio = Math.round((commissionGnew - totalPaid) * 100) / 100
+
+  await admin
+    .from('contracts')
+    .update({ decomission_gnew: totalPaid, beneficio: undefined })
+    .eq('id', contractId)
+
+  // beneficio es columna generada, no se puede setear directamente
+  // Se calcula como commission_gnew - decomission_gnew
+  await admin
+    .from('contracts')
+    .update({ decomission_gnew: totalPaid })
+    .eq('id', contractId)
+}
+
+interface HierarchyUser {
+  id: string
+  parent_id: string | null
+  tier_name: string | null
+  tier_rate_pct: number | null
+}
+
+async function getHierarchyChain(
+  admin: ReturnType<typeof getAdminClient>,
+  userId: string
+): Promise<HierarchyUser[]> {
+  const chain: HierarchyUser[] = []
+  let currentId: string | null = userId
+  const visited = new Set<string>()
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId)
+
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id, parent_id, commission_tier_id')
+      .eq('id', currentId)
+      .single()
+
+    if (!profile) break
+
+    let tierName: string | null = null
+    let tierRate: number | null = null
+
+    if (profile.commission_tier_id) {
+      const { data: tier } = await admin
+        .from('commission_tiers')
+        .select('name, rate_pct')
+        .eq('id', profile.commission_tier_id)
+        .single()
+
+      if (tier) {
+        tierName = tier.name as string
+        tierRate = tier.rate_pct as number | null
+      }
+    }
+
+    chain.push({
+      id: profile.id as string,
+      parent_id: profile.parent_id as string | null,
+      tier_name: tierName,
+      tier_rate_pct: tierRate,
+    })
+
+    currentId = profile.parent_id as string | null
+  }
+
+  return chain
+}
+
+async function calculateUserCommission(
+  admin: ReturnType<typeof getAdminClient>,
+  userId: string,
+  productId: number | null,
+  payoutPartnerBase: number,
+  tierName: string | null,
+  tierRate: number | null
+): Promise<number> {
+  // 1. Override personalizado
+  if (productId) {
+    // Buscar override específico de producto primero, luego global
+    const { data: specificOverride } = await admin
+      .from('user_commission_overrides')
+      .select('override_type, override_value')
+      .eq('user_id', userId)
+      .eq('product_id', productId)
+      .maybeSingle()
+
+    if (specificOverride) {
+      if (specificOverride.override_type === 'fixed') return Number(specificOverride.override_value)
+      return payoutPartnerBase * Number(specificOverride.override_value)
+    }
+
+    // Buscar override global (product_id IS NULL)
+    const { data: globalOverride } = await admin
+      .from('user_commission_overrides')
+      .select('override_type, override_value')
+      .eq('user_id', userId)
+      .is('product_id', null)
+      .maybeSingle()
+
+    if (globalOverride) {
+      if (globalOverride.override_type === 'fixed') return Number(globalOverride.override_value)
+      return payoutPartnerBase * Number(globalOverride.override_value)
+    }
+  }
+
+  // 2. Tier estándar
+  if (tierRate !== null) {
+    return payoutPartnerBase * tierRate
+  }
+
+  return 0
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CARGA MASIVA DESDE EXCEL
+// ═══════════════════════════════════════════════════════════════════
+
+// ── 13. processCommissionExcelUpload ────────────────────────────────────────
+
+interface ExcelUploadResult extends ActionResult {
+  companies_created?: number
+  products_created?: number
+  rates_upserted?: number
+}
+
+export async function processCommissionExcelUpload(
+  _prev: ExcelUploadResult | null,
+  formData: FormData
+): Promise<ExcelUploadResult> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') {
+    return { ok: false, error: 'Solo ADMIN puede cargar Excel de comisiones.' }
+  }
+
+  const jsonData = formData.get('data') as string
+  const fileName = formData.get('file_name') as string
+
+  if (!jsonData || !fileName) {
+    return { ok: false, error: 'Datos no recibidos.' }
+  }
+
+  let parsed: ParsedCommissionExcel
+  try {
+    parsed = JSON.parse(jsonData)
+  } catch {
+    return { ok: false, error: 'Formato de datos inválido.' }
+  }
+
+  if (!parsed.company_name?.trim()) {
+    return { ok: false, error: 'Comercializadora es obligatoria.' }
+  }
+
+  const admin = getAdminClient()
+  let companiesCreated = 0
+  let productsCreated = 0
+  let ratesUpserted = 0
+
+  // Upsert comercializadora
+  const { data: existingCompany } = await admin
+    .from('energy_companies')
+    .select('id')
+    .eq('name', parsed.company_name.trim())
+    .maybeSingle()
+
+  let companyId: number
+
+  if (existingCompany) {
+    companyId = existingCompany.id as number
+    // Actualizar margen si cambió
+    await admin
+      .from('energy_companies')
+      .update({
+        gnew_margin_pct: parsed.gnew_margin_pct,
+        commission_model: parsed.commission_model,
+      })
+      .eq('id', companyId)
+  } else {
+    const { data: newCompany, error: companyError } = await admin
+      .from('energy_companies')
+      .insert({
+        name: parsed.company_name.trim(),
+        commission_model: parsed.commission_model,
+        gnew_margin_pct: parsed.gnew_margin_pct,
+      })
+      .select('id')
+      .single()
+
+    if (companyError || !newCompany) {
+      return { ok: false, error: companyError?.message ?? 'Error al crear comercializadora.' }
+    }
+    companyId = newCompany.id as number
+    companiesCreated++
+  }
+
+  // Procesar productos y rates
+  for (const product of parsed.products) {
+    // Upsert producto
+    const { data: existingProduct } = await admin
+      .from('energy_products')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('name', product.name)
+      .eq('fee_value', product.fee_value ?? 0)
+      .maybeSingle()
+
+    let productDbId: number
+
+    if (existingProduct) {
+      productDbId = existingProduct.id as number
+    } else {
+      const { data: newProduct, error: prodError } = await admin
+        .from('energy_products')
+        .insert({
+          company_id: companyId,
+          name: product.name,
+          fee_value: product.fee_value,
+          fee_label: product.fee_label,
+        })
+        .select('id')
+        .single()
+
+      if (prodError || !newProduct) continue
+      productDbId = newProduct.id as number
+      productsCreated++
+    }
+
+    // Upsert commission_rates
+    for (const rate of product.rates) {
+      const { error: rateError } = await admin
+        .from('commission_rates')
+        .upsert(
+          {
+            product_id: productDbId,
+            tariff: product.tariff,
+            consumption_min: rate.consumption_min,
+            consumption_max: rate.consumption_max,
+            gross_amount: rate.gross_amount,
+          },
+          { onConflict: 'product_id,tariff,consumption_min,consumption_max' }
+        )
+
+      if (!rateError) ratesUpserted++
+    }
+  }
+
+  // Audit
+  await admin.from('audit_log').insert({
+    user_id: auth.userId,
+    action: 'commission_excel_upload_v2',
+    details: {
+      file_name: fileName,
+      company: parsed.company_name,
+      companies_created: companiesCreated,
+      products_created: productsCreated,
+      rates_upserted: ratesUpserted,
+    },
+  })
+
+  revalidatePath('/comisionado')
+  return { ok: true, companies_created: companiesCreated, products_created: productsCreated, rates_upserted: ratesUpserted }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FUNCIONES LEGACY (backward compat para rate_tables existentes)
+// ═══════════════════════════════════════════════════════════════════
 
 export async function getComercializadoras(): Promise<Comercializadora[]> {
   const auth = await getAuthProfile()
@@ -276,241 +1230,6 @@ export async function getComercializadoras(): Promise<Comercializadora[]> {
 
   return (data ?? []) as Comercializadora[]
 }
-
-// ── 6. getFormulaConfigs ─────────────────────────────────────────────────────
-
-export async function getFormulaConfigs(): Promise<CommissionFormulaConfig[]> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') return []
-
-  const { supabase } = auth
-
-  const { data, error } = await supabase
-    .from('commission_formula_config')
-    .select(`
-      *,
-      comercializadora:comercializadoras!commission_formula_config_comercializadora_id_fkey(name),
-      product:products!commission_formula_config_product_id_fkey(name),
-      creator:profiles!commission_formula_config_created_by_fkey(full_name)
-    `)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('[getFormulaConfigs]', error.message)
-    return []
-  }
-
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const comercializadora = row.comercializadora as { name: string } | null
-    const product = row.product as { name: string } | null
-    const creator = row.creator as { full_name: string } | null
-    return {
-      id: row.id as number,
-      comercializadora_id: row.comercializadora_id as number,
-      product_id: row.product_id as number,
-      fee_energia: row.fee_energia as number,
-      mi: row.mi as number,
-      fee_potencia: row.fee_potencia as number,
-      comision_servicio: row.comision_servicio as number,
-      version: row.version as number,
-      active: row.active as boolean,
-      created_by: row.created_by as string,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-      comercializadora_name: comercializadora?.name ?? '',
-      product_name: product?.name ?? '',
-      created_by_name: creator?.full_name ?? '',
-    } satisfies CommissionFormulaConfig
-  })
-}
-
-// ── 7. createFormulaConfig ───────────────────────────────────────────────────
-
-export async function createFormulaConfig(
-  _prev: ActionResult | null,
-  formData: FormData
-): Promise<ActionResult> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') {
-    return { ok: false, error: 'Solo ADMIN puede crear fórmulas.' }
-  }
-
-  const comercializadoraId = Number(formData.get('comercializadora_id'))
-  const productId = Number(formData.get('product_id'))
-  const feeEnergia = Number(formData.get('fee_energia') || 0)
-  const mi = Number(formData.get('mi') || 0)
-  const feePotencia = Number(formData.get('fee_potencia') || 0)
-  const comisionServicio = Number(formData.get('comision_servicio') || 0)
-
-  if (!comercializadoraId || !productId) {
-    return { ok: false, error: 'Comercializadora y producto son obligatorios.' }
-  }
-
-  const admin = getAdminClient()
-
-  // Desactivar config activa previa para la misma comercializadora+producto
-  const { data: existing } = await admin
-    .from('commission_formula_config')
-    .select('id, version')
-    .eq('comercializadora_id', comercializadoraId)
-    .eq('product_id', productId)
-    .eq('active', true)
-    .maybeSingle()
-
-  const newVersion = existing ? (existing.version as number) + 1 : 1
-
-  if (existing) {
-    await admin
-      .from('commission_formula_config')
-      .update({ active: false })
-      .eq('id', existing.id)
-  }
-
-  const { error } = await admin
-    .from('commission_formula_config')
-    .insert({
-      comercializadora_id: comercializadoraId,
-      product_id: productId,
-      fee_energia: feeEnergia,
-      mi,
-      fee_potencia: feePotencia,
-      comision_servicio: comisionServicio,
-      version: newVersion,
-      active: true,
-      created_by: auth.userId,
-    })
-
-  if (error) {
-    console.error('[createFormulaConfig]', error.message)
-    return { ok: false, error: error.message }
-  }
-
-  revalidatePath('/comisionado')
-  return { ok: true }
-}
-
-// ── 8. updateFormulaConfig ───────────────────────────────────────────────────
-
-export async function updateFormulaConfig(
-  id: number,
-  formData: FormData
-): Promise<ActionResult> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') {
-    return { ok: false, error: 'Solo ADMIN puede editar fórmulas.' }
-  }
-
-  const feeEnergia = Number(formData.get('fee_energia') || 0)
-  const mi = Number(formData.get('mi') || 0)
-  const feePotencia = Number(formData.get('fee_potencia') || 0)
-  const comisionServicio = Number(formData.get('comision_servicio') || 0)
-
-  const admin = getAdminClient()
-
-  const { error } = await admin
-    .from('commission_formula_config')
-    .update({
-      fee_energia: feeEnergia,
-      mi,
-      fee_potencia: feePotencia,
-      comision_servicio: comisionServicio,
-    })
-    .eq('id', id)
-
-  if (error) {
-    console.error('[updateFormulaConfig]', error.message)
-    return { ok: false, error: error.message }
-  }
-
-  revalidatePath('/comisionado')
-  return { ok: true }
-}
-
-// ── 9. calculateByFormula ────────────────────────────────────────────────────
-
-export async function calculateByFormula(configId: number): Promise<FormulaCalcResult> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') {
-    return { ok: false, error: 'Solo ADMIN puede ejecutar cálculos por fórmula.' }
-  }
-
-  const admin = getAdminClient()
-
-  // Obtener la config
-  const { data: config } = await admin
-    .from('commission_formula_config')
-    .select('*')
-    .eq('id', configId)
-    .single()
-
-  if (!config) return { ok: false, error: 'Configuración no encontrada.' }
-
-  // Buscar contratos cuyo producto coincida (el producto ya pertenece a una comercializadora)
-  const { data: contracts } = await admin
-    .from('contracts')
-    .select('id, consumo_anual, media_potencia')
-    .eq('product_id', config.product_id)
-    .is('deleted_at', null)
-    .neq('status_commission_gnew', 'bloqueada')
-
-  if (!contracts || contracts.length === 0) {
-    return { ok: false, error: 'No se encontraron contratos para este producto.' }
-  }
-
-  let updated = 0
-  const feeE = Number(config.fee_energia)
-  const miVal = Number(config.mi)
-  const feeP = Number(config.fee_potencia)
-  const comServ = Number(config.comision_servicio)
-
-  for (const c of contracts) {
-    const consumo = Number(c.consumo_anual ?? 0)
-    const potencia = Number(c.media_potencia ?? 0)
-
-    // Fórmula: consumo × (fee_energia + mi) + (media_potencia × fee_potencia) + comision_servicio
-    let gnew = (consumo * (feeE + miVal)) + (potencia * feeP) + comServ
-    gnew = Math.round(gnew * 10000) / 10000
-
-    // Actualizar contrato
-    await admin
-      .from('contracts')
-      .update({
-        commission_gnew: gnew,
-        status_commission_gnew: 'calculada_formula',
-      })
-      .eq('id', c.id)
-
-    // Log del cálculo
-    await admin.from('commission_calculations').insert({
-      contract_id: c.id,
-      formula_config_id: configId,
-      consumo_used: consumo,
-      potencia_used: potencia,
-      fee_energia_used: feeE,
-      mi_used: miVal,
-      fee_potencia_used: feeP,
-      comision_servicio_used: comServ,
-      result_amount: gnew,
-      calculated_by: auth.userId,
-    })
-
-    // Auto-calcular paid
-    await recalculateCommissionPaid(admin, c.id as string, gnew)
-    updated++
-  }
-
-  // Audit
-  await admin.from('audit_log').insert({
-    user_id: auth.userId,
-    action: 'commission_formula_calculate',
-    details: { config_id: configId, contracts_updated: updated },
-  })
-
-  revalidatePath('/comisionado')
-  return { ok: true, contractsUpdated: updated }
-}
-
-// ── 10. getProducts ─────────────────────────────────────────────────────────
 
 export async function getProducts(comercializadoraId?: number): Promise<Product[]> {
   const auth = await getAuthProfile()
@@ -538,17 +1257,84 @@ export async function getProducts(comercializadoraId?: number): Promise<Product[
   })) satisfies Product[]
 }
 
-// ── 11. processRateTableUpload ──────────────────────────────────────────────
+export async function getRateTables(): Promise<RateTable[]> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') return []
 
-interface RateTableUploadResult extends ActionResult {
-  totals?: { sheets: number; offers: number; rates: number }
-  errors?: Array<{ sheet?: string; row?: number; error: string }>
+  const { data, error } = await auth.supabase
+    .from('rate_tables')
+    .select(`
+      *,
+      comercializadora:comercializadoras!rate_tables_comercializadora_id_fkey(name),
+      uploader:profiles!rate_tables_uploaded_by_fkey(full_name)
+    `)
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[getRateTables]', error.message)
+    return []
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const comercializadora = row.comercializadora as { name: string } | null
+    const uploader = row.uploader as { full_name: string } | null
+    return {
+      id: row.id as number,
+      comercializadora_id: row.comercializadora_id as number,
+      comercializadora_name: comercializadora?.name ?? '',
+      version: row.version as number,
+      active: row.active as boolean,
+      notes: row.notes as string | null,
+      uploaded_by: row.uploaded_by as string,
+      created_at: row.created_at as string,
+      updated_at: row.updated_at as string,
+      uploaded_by_name: uploader?.full_name ?? '',
+    } satisfies RateTable
+  })
+}
+
+export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
+  const auth = await getAuthProfile()
+  if (!auth || auth.role !== 'ADMIN') return []
+
+  const { data, error } = await auth.supabase
+    .from('rate_table_uploads')
+    .select(`
+      *,
+      comercializadora:comercializadoras!rate_table_uploads_comercializadora_id_fkey(name),
+      uploader:profiles!rate_table_uploads_uploaded_by_fkey(full_name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) {
+    console.error('[getRateTableUploadHistory]', error.message)
+    return []
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const comercializadora = row.comercializadora as { name: string } | null
+    const uploader = row.uploader as { full_name: string } | null
+    return {
+      id: row.id as number,
+      rate_table_id: row.rate_table_id as number,
+      file_name: row.file_name as string,
+      comercializadora_id: (row.comercializadora_id as number) ?? null,
+      comercializadora_name: comercializadora?.name ?? '',
+      totals: row.totals as RateTableUpload['totals'],
+      errors: row.errors as RateTableUpload['errors'],
+      uploaded_by: row.uploaded_by as string,
+      created_at: row.created_at as string,
+      uploaded_by_name: uploader?.full_name ?? '',
+    } satisfies RateTableUpload
+  })
 }
 
 export async function processRateTableUpload(
-  _prev: RateTableUploadResult | null,
+  _prev: { ok: boolean; error?: string; totals?: { sheets: number; offers: number; rates: number }; errors?: Array<{ sheet?: string; row?: number; error: string }> } | null,
   formData: FormData
-): Promise<RateTableUploadResult> {
+): Promise<{ ok: boolean; error?: string; totals?: { sheets: number; offers: number; rates: number }; errors?: Array<{ sheet?: string; row?: number; error: string }> }> {
   const auth = await getAuthProfile()
   if (!auth || auth.role !== 'ADMIN') {
     return { ok: false, error: 'Solo ADMIN puede subir tablas de rangos.' }
@@ -582,7 +1368,7 @@ export async function processRateTableUpload(
   let totalRates = 0
   const comercializadoraName = parsed.comercializadora.trim()
 
-  // Upsert comercializadora por nombre → obtener ID
+  // Upsert comercializadora en tabla legacy
   const { data: existingComerc } = await admin
     .from('comercializadoras')
     .select('id')
@@ -606,7 +1392,20 @@ export async function processRateTableUpload(
     comercializadoraId = newComerc.id as number
   }
 
-  // Desactivar versión anterior de esta comercializadora
+  // También crear en energy_companies si no existe
+  const { data: existingEC } = await admin
+    .from('energy_companies')
+    .select('id')
+    .eq('name', comercializadoraName)
+    .maybeSingle()
+
+  if (!existingEC) {
+    await admin
+      .from('energy_companies')
+      .insert({ name: comercializadoraName, commission_model: 'table' })
+  }
+
+  // Desactivar versión anterior
   const { data: existing } = await admin
     .from('rate_tables')
     .select('id, version')
@@ -623,7 +1422,6 @@ export async function processRateTableUpload(
       .eq('id', existing.id)
   }
 
-  // Insertar rate_table
   const { data: rateTable, error: rtError } = await admin
     .from('rate_tables')
     .insert({
@@ -641,14 +1439,11 @@ export async function processRateTableUpload(
 
   const rateTableId = rateTable.id as number
 
-  // Auto-crear productos por cada hoja del Excel
   for (const sheet of parsed.sheets) {
     const sheetName = sheet.tarifa
-    // Inferir tipo de producto a partir de la tarifa
     const isGas = sheetName.startsWith('RL.')
     const productType: ProductTipo = isGas ? 'gas_empresa' : 'luz_empresa'
 
-    // Upsert producto con nombre = nombre de hoja, vinculado a esta comercializadora
     const { data: existingProduct } = await admin
       .from('products')
       .select('id')
@@ -666,7 +1461,6 @@ export async function processRateTableUpload(
     }
   }
 
-  // Insertar sheets, offers y rates
   for (const sheet of parsed.sheets) {
     if (!sheet.tarifa || !sheet.offers || sheet.offers.length === 0) {
       errors.push({ sheet: sheet.tarifa, error: 'Hoja sin ofertas' })
@@ -708,7 +1502,6 @@ export async function processRateTableUpload(
       const offerId = offerRow.id as number
       totalOffers++
 
-      // Insertar rates en batch
       if (offer.rates.length > 0) {
         const rateInserts = offer.rates.map(r => ({
           offer_id: offerId,
@@ -732,7 +1525,6 @@ export async function processRateTableUpload(
 
   const totals = { sheets: parsed.sheets.length, offers: totalOffers, rates: totalRates }
 
-  // Log de subida
   await admin.from('rate_table_uploads').insert({
     rate_table_id: rateTableId,
     file_name: fileName,
@@ -742,7 +1534,6 @@ export async function processRateTableUpload(
     uploaded_by: auth.userId,
   })
 
-  // Audit
   await admin.from('audit_log').insert({
     user_id: auth.userId,
     action: 'rate_table_upload',
@@ -751,86 +1542,4 @@ export async function processRateTableUpload(
 
   revalidatePath('/comisionado')
   return { ok: true, totals, errors: errors.length > 0 ? errors : undefined }
-}
-
-// ── 12. getRateTables ───────────────────────────────────────────────────────
-
-export async function getRateTables(): Promise<RateTable[]> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') return []
-
-  const { supabase } = auth
-
-  const { data, error } = await supabase
-    .from('rate_tables')
-    .select(`
-      *,
-      comercializadora:comercializadoras!rate_tables_comercializadora_id_fkey(name),
-      uploader:profiles!rate_tables_uploaded_by_fkey(full_name)
-    `)
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('[getRateTables]', error.message)
-    return []
-  }
-
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const comercializadora = row.comercializadora as { name: string } | null
-    const uploader = row.uploader as { full_name: string } | null
-    return {
-      id: row.id as number,
-      comercializadora_id: row.comercializadora_id as number,
-      comercializadora_name: comercializadora?.name ?? '',
-      version: row.version as number,
-      active: row.active as boolean,
-      notes: row.notes as string | null,
-      uploaded_by: row.uploaded_by as string,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-      uploaded_by_name: uploader?.full_name ?? '',
-    } satisfies RateTable
-  })
-}
-
-// ── 13. getRateTableUploadHistory ───────────────────────────────────────────
-
-export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') return []
-
-  const { supabase } = auth
-
-  const { data, error } = await supabase
-    .from('rate_table_uploads')
-    .select(`
-      *,
-      comercializadora:comercializadoras!rate_table_uploads_comercializadora_id_fkey(name),
-      uploader:profiles!rate_table_uploads_uploaded_by_fkey(full_name)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  if (error) {
-    console.error('[getRateTableUploadHistory]', error.message)
-    return []
-  }
-
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const comercializadora = row.comercializadora as { name: string } | null
-    const uploader = row.uploader as { full_name: string } | null
-    return {
-      id: row.id as number,
-      rate_table_id: row.rate_table_id as number,
-      file_name: row.file_name as string,
-      comercializadora_id: (row.comercializadora_id as number) ?? null,
-      comercializadora_name: comercializadora?.name ?? '',
-      totals: row.totals as RateTableUpload['totals'],
-      errors: row.errors as RateTableUpload['errors'],
-      uploaded_by: row.uploaded_by as string,
-      created_at: row.created_at as string,
-      uploaded_by_name: uploader?.full_name ?? '',
-    } satisfies RateTableUpload
-  })
 }
