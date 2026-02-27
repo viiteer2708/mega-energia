@@ -820,16 +820,19 @@ export async function calculateContractCommissions(contractId: string): Promise<
   grossCommission = Math.round(grossCommission * 100) / 100
 
   // ═══════════════════════════════════════════════
-  // PASO 2: MARGEN GNEW
+  // PASO 2: commission_gnew, payout, gnew_margin
   // ═══════════════════════════════════════════════
 
+  let gnewMargin = 0
+
   if (model === 'table') {
+    // TABLE: gross viene de tabla, GNEW se queda gnew_margin_pct, el resto es payout
+    commissionGnew = grossCommission
     const gnewMarginPct = Number(company.gnew_margin_pct ?? 0)
-    const gnewMargin = grossCommission * gnewMarginPct
-    commissionGnew = Math.round(gnewMargin * 100) / 100
+    gnewMargin = Math.round(grossCommission * gnewMarginPct * 100) / 100
     payoutPartnerBase = Math.round((grossCommission - gnewMargin) * 100) / 100
   } else {
-    // En modelo fórmula: GNEW cobra por fórmula, GNEW paga por tabla (SIEMPRE)
+    // FORMULA: GNEW cobra por fórmula, GNEW paga por tabla (SIEMPRE)
     commissionGnew = grossCommission
 
     // El payout a la red SIEMPRE viene de commission_rates (tabla)
@@ -852,6 +855,8 @@ export async function calculateContractCommissions(contractId: string): Promise<
     }
 
     payoutPartnerBase = Number(payoutRate.gross_amount)
+    // gnew_margin puede ser negativo si payout > commission_gnew (el Admin debe ajustar las tablas)
+    gnewMargin = Math.round((commissionGnew - payoutPartnerBase) * 100) / 100
   }
 
   // ═══════════════════════════════════════════════
@@ -862,8 +867,8 @@ export async function calculateContractCommissions(contractId: string): Promise<
     .from('contracts')
     .update({
       gross_commission: grossCommission,
-      gnew_margin: commissionGnew,
       commission_gnew: commissionGnew,
+      gnew_margin: gnewMargin,
       payout_partner_base: payoutPartnerBase,
       status_commission_gnew: model === 'table' ? 'cargada_excel' : 'calculada_formula',
     })
@@ -943,25 +948,19 @@ async function calculateNetworkCommissions(
     }
   }
 
-  // Calcular beneficio GNEW
+  // Calcular total pagado y guardar decomission_gnew
   const { data: allCommissions } = await admin
     .from('contract_commissions')
     .select('commission_paid')
     .eq('contract_id', contractId)
 
   const totalPaid = (allCommissions ?? []).reduce((sum, c) => sum + Number(c.commission_paid), 0)
-  const beneficio = Math.round((commissionGnew - totalPaid) * 100) / 100
 
+  // decomission_gnew = total pagado a la red
+  // beneficio = commission_gnew - decomission_gnew (puede ser negativo en modelo fórmula)
   await admin
     .from('contracts')
-    .update({ decomission_gnew: totalPaid, beneficio: undefined })
-    .eq('id', contractId)
-
-  // beneficio es columna generada, no se puede setear directamente
-  // Se calcula como commission_gnew - decomission_gnew
-  await admin
-    .from('contracts')
-    .update({ decomission_gnew: totalPaid })
+    .update({ decomission_gnew: Math.round(totalPaid * 100) / 100 })
     .eq('id', contractId)
 }
 
