@@ -10,7 +10,7 @@ import {
   updateFormulaConfig,
   calculateByFormula,
 } from '@/app/(app)/comisionado/actions'
-import type { CommissionFormulaConfig, Campaign, Product } from '@/lib/types'
+import type { CommissionFormulaConfig, Comercializadora, Product } from '@/lib/types'
 
 const inputClass =
   'flex h-9 w-full rounded-md border border-border bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
@@ -19,19 +19,25 @@ const labelClass = 'text-sm font-medium text-foreground'
 
 interface FormulaConfigProps {
   configs: CommissionFormulaConfig[]
-  campaigns: Campaign[]
+  comercializadoras: Comercializadora[]
   products: Product[]
 }
 
-export function FormulaConfig({ configs, campaigns, products }: FormulaConfigProps) {
+export function FormulaConfig({ configs, comercializadoras, products }: FormulaConfigProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [calcResult, setCalcResult] = useState<{ configId: number; message: string; ok: boolean } | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [selectedComercializadora, setSelectedComercializadora] = useState<number | null>(null)
   const [isPending, startTransition] = useTransition()
   const [createState, createAction, isCreating] = useActionState(createFormulaConfig, null)
 
+  // Filtrar productos por comercializadora seleccionada
+  const filteredProducts = selectedComercializadora
+    ? products.filter(p => p.comercializadora_id === selectedComercializadora)
+    : products
+
   const handleCalculate = (configId: number) => {
-    if (!confirm('Esto calculará la comisión GNE para todos los contratos de esta campaña/producto. ¿Continuar?')) return
+    if (!confirm('Esto calculará la comisión GNE para todos los contratos de este producto. ¿Continuar?')) return
 
     startTransition(async () => {
       const result = await calculateByFormula(configId)
@@ -81,7 +87,7 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-foreground">
-                        {config.campaign_name} / {config.product_name}
+                        {config.comercializadora_name} / {config.product_name}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         v{config.version}
@@ -248,10 +254,15 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
             <form action={createAction} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Campaña</label>
-                  <select name="campaign_id" required className={inputClass}>
+                  <label className={labelClass}>Comercializadora</label>
+                  <select
+                    name="comercializadora_id"
+                    required
+                    className={inputClass}
+                    onChange={e => setSelectedComercializadora(e.target.value ? Number(e.target.value) : null)}
+                  >
                     <option value="">Seleccionar...</option>
-                    {campaigns.map(c => (
+                    {comercializadoras.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -260,7 +271,7 @@ export function FormulaConfig({ configs, campaigns, products }: FormulaConfigPro
                   <label className={labelClass}>Producto</label>
                   <select name="product_id" required className={inputClass}>
                     <option value="">Seleccionar...</option>
-                    {products.map(p => (
+                    {filteredProducts.map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>

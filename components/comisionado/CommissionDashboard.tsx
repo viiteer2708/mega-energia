@@ -1,27 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { Coins, FileSpreadsheet, Calculator, Table2 } from 'lucide-react'
+import { Coins, Calculator, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CommissionLines } from '@/components/comisionado/CommissionLines'
-import { ExcelUpload } from '@/components/comisionado/ExcelUpload'
 import { FormulaConfig } from '@/components/comisionado/FormulaConfig'
 import { RateTableUpload } from '@/components/comisionado/RateTableUpload'
 import type {
   UserProfile, CommissionLineListResult,
-  CommissionFormulaConfig, CommissionUpload,
-  Campaign, Product,
+  CommissionFormulaConfig, Comercializadora, Product,
   RateTable, RateTableUpload as RateTableUploadType,
 } from '@/lib/types'
 
-type Tab = 'lineas' | 'excel' | 'formulas' | 'tablas'
+type Tab = 'lineas' | 'formulas' | 'tablas'
 
 interface CommissionDashboardProps {
   currentUser: UserProfile
   initialLines: CommissionLineListResult
   configs: CommissionFormulaConfig[]
-  uploads: CommissionUpload[]
-  campaigns: Campaign[]
+  comercializadoras: Comercializadora[]
   products: Product[]
   rateTables: RateTable[]
   rateTableUploads: RateTableUploadType[]
@@ -32,8 +29,7 @@ export function CommissionDashboard({
   currentUser,
   initialLines,
   configs,
-  uploads,
-  campaigns,
+  comercializadoras,
   products,
   rateTables,
   rateTableUploads,
@@ -73,18 +69,6 @@ export function CommissionDashboard({
         {isAdmin && (
           <>
             <button
-              onClick={() => setTab('excel')}
-              className={cn(
-                'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
-                tab === 'excel'
-                  ? 'bg-primary/15 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Subir Excel
-            </button>
-            <button
               onClick={() => setTab('formulas')}
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
@@ -115,12 +99,10 @@ export function CommissionDashboard({
       {/* Content */}
       {tab === 'lineas' ? (
         <CommissionLines initialData={initialLines} isAdmin={isAdmin} />
-      ) : tab === 'excel' ? (
-        <ExcelUpload uploads={uploads} />
       ) : tab === 'formulas' ? (
         <FormulaConfig
           configs={configs}
-          campaigns={campaigns}
+          comercializadoras={comercializadoras}
           products={products}
         />
       ) : (

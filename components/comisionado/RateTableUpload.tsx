@@ -421,7 +421,7 @@ export function RateTableUpload({ rateTables, rateTableUploads }: RateTableUploa
                 <tbody>
                   {rateTables.map(rt => (
                     <tr key={rt.id} className="border-b border-border/50">
-                      <td className="px-3 py-2 font-medium">{rt.comercializadora}</td>
+                      <td className="px-3 py-2 font-medium">{rt.comercializadora_name}</td>
                       <td className="px-3 py-2">
                         <Badge variant="outline">v{rt.version}</Badge>
                       </td>
@@ -468,7 +468,7 @@ export function RateTableUpload({ rateTables, rateTableUploads }: RateTableUploa
                   {rateTableUploads.map(u => (
                     <tr key={u.id} className="border-b border-border/50">
                       <td className="px-3 py-2 font-medium">{u.file_name}</td>
-                      <td className="px-3 py-2">{u.comercializadora}</td>
+                      <td className="px-3 py-2">{u.comercializadora_name}</td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {new Date(u.created_at).toLocaleDateString('es-ES')}
                       </td>

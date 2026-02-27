@@ -4,8 +4,7 @@ import { ROLES_CAN_VIEW_COMMISSIONS } from '@/lib/types'
 import {
   getCommissionLines,
   getFormulaConfigs,
-  getUploadHistory,
-  getCampaigns,
+  getComercializadoras,
   getProducts,
   getRateTables,
   getRateTableUploadHistory,
@@ -20,12 +19,11 @@ export default async function ComisionadoPage() {
 
   const isAdmin = user.role === 'ADMIN'
 
-  // Fetch paralelo — configs/uploads/campaigns/products/rateTables solo para ADMIN
-  const [linesResult, configs, uploads, campaigns, products, rateTables, rateTableUploads] = await Promise.all([
+  // Fetch paralelo — configs/comercializadoras/products/rateTables solo para ADMIN
+  const [linesResult, configs, comercializadoras, products, rateTables, rateTableUploads] = await Promise.all([
     getCommissionLines(),
     isAdmin ? getFormulaConfigs() : Promise.resolve([]),
-    isAdmin ? getUploadHistory() : Promise.resolve([]),
-    isAdmin ? getCampaigns() : Promise.resolve([]),
+    isAdmin ? getComercializadoras() : Promise.resolve([]),
     isAdmin ? getProducts() : Promise.resolve([]),
     isAdmin ? getRateTables() : Promise.resolve([]),
     isAdmin ? getRateTableUploadHistory() : Promise.resolve([]),
@@ -36,8 +34,7 @@ export default async function ComisionadoPage() {
       currentUser={user}
       initialLines={linesResult}
       configs={configs}
-      uploads={uploads}
-      campaigns={campaigns}
+      comercializadoras={comercializadoras}
       products={products}
       rateTables={rateTables}
       rateTableUploads={rateTableUploads}

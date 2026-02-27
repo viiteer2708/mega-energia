@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import type {
   Role, PagoStatus, CommissionLineFilters, CommissionLineListResult,
-  CommissionLineItem, CommissionFormulaConfig, CommissionUpload,
-  Campaign, Product, RateTable, RateTableUpload,
-  ParsedRateTable,
+  CommissionLineItem, CommissionFormulaConfig,
+  Comercializadora, Product, RateTable, RateTableUpload,
+  ParsedRateTable, ProductTipo,
 } from '@/lib/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -15,13 +15,6 @@ import type {
 interface ActionResult {
   ok: boolean
   error?: string
-}
-
-interface ExcelUploadResult extends ActionResult {
-  totalRows?: number
-  updatedRows?: number
-  errorRows?: number
-  errors?: Array<{ row: number; cups?: string; error: string }>
 }
 
 interface FormulaCalcResult extends ActionResult {
@@ -269,107 +262,19 @@ async function recalculateCommissionPaid(
     )
 }
 
-// ── 5. processExcelUpload ────────────────────────────────────────────────────
+// ── 5. getComercializadoras ─────────────────────────────────────────────────
 
-export async function processExcelUpload(
-  _prev: ExcelUploadResult | null,
-  formData: FormData
-): Promise<ExcelUploadResult> {
+export async function getComercializadoras(): Promise<Comercializadora[]> {
   const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') {
-    return { ok: false, error: 'Solo ADMIN puede subir archivos Excel.' }
-  }
+  if (!auth || auth.role !== 'ADMIN') return []
 
-  const jsonRows = formData.get('rows') as string
-  const fileName = formData.get('file_name') as string
+  const { data } = await auth.supabase
+    .from('comercializadoras')
+    .select('*')
+    .eq('active', true)
+    .order('name')
 
-  if (!jsonRows || !fileName) {
-    return { ok: false, error: 'Datos del Excel no recibidos.' }
-  }
-
-  let rows: Array<{ cups?: string; su_ref?: string; commission_gnew?: number }>
-  try {
-    rows = JSON.parse(jsonRows)
-  } catch {
-    return { ok: false, error: 'Formato de datos inválido.' }
-  }
-
-  const admin = getAdminClient()
-  let updatedRows = 0
-  let errorRows = 0
-  const errors: Array<{ row: number; cups?: string; error: string }> = []
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    const cups = row.cups?.trim()
-    const suRef = row.su_ref?.trim()
-    const gnew = row.commission_gnew
-
-    if (gnew === undefined || gnew === null || isNaN(Number(gnew))) {
-      errorRows++
-      errors.push({ row: i + 1, cups, error: 'commission_gnew no válido' })
-      continue
-    }
-
-    // Buscar contrato por CUPS o su_ref
-    let query = admin.from('contracts').select('id').is('deleted_at', null)
-    if (cups) {
-      query = query.eq('cups', cups)
-    } else if (suRef) {
-      query = query.eq('su_ref', suRef)
-    } else {
-      errorRows++
-      errors.push({ row: i + 1, error: 'Sin CUPS ni referencia' })
-      continue
-    }
-
-    const { data: contracts } = await query
-    if (!contracts || contracts.length === 0) {
-      errorRows++
-      errors.push({ row: i + 1, cups, error: 'Contrato no encontrado' })
-      continue
-    }
-
-    // Actualizar commission_gnew en el contrato
-    const contractId = contracts[0].id as string
-    const { error: updateError } = await admin
-      .from('contracts')
-      .update({
-        commission_gnew: Number(gnew),
-        status_commission_gnew: 'cargada_excel',
-      })
-      .eq('id', contractId)
-
-    if (updateError) {
-      errorRows++
-      errors.push({ row: i + 1, cups, error: updateError.message })
-      continue
-    }
-
-    // Auto-calcular commission_paid
-    await recalculateCommissionPaid(admin, contractId, Number(gnew))
-    updatedRows++
-  }
-
-  // Log de subida
-  await admin.from('commission_uploads').insert({
-    file_name: fileName,
-    total_rows: rows.length,
-    updated_rows: updatedRows,
-    error_rows: errorRows,
-    errors: errors.length > 0 ? errors : null,
-    uploaded_by: auth.userId,
-  })
-
-  // Audit
-  await admin.from('audit_log').insert({
-    user_id: auth.userId,
-    action: 'commission_excel_upload',
-    details: { file_name: fileName, total_rows: rows.length, updated_rows: updatedRows, error_rows: errorRows },
-  })
-
-  revalidatePath('/comisionado')
-  return { ok: true, totalRows: rows.length, updatedRows, errorRows, errors: errors.length > 0 ? errors : undefined }
+  return (data ?? []) as Comercializadora[]
 }
 
 // ── 6. getFormulaConfigs ─────────────────────────────────────────────────────
@@ -384,7 +289,7 @@ export async function getFormulaConfigs(): Promise<CommissionFormulaConfig[]> {
     .from('commission_formula_config')
     .select(`
       *,
-      campaign:campaigns!commission_formula_config_campaign_id_fkey(name),
+      comercializadora:comercializadoras!commission_formula_config_comercializadora_id_fkey(name),
       product:products!commission_formula_config_product_id_fkey(name),
       creator:profiles!commission_formula_config_created_by_fkey(full_name)
     `)
@@ -396,12 +301,12 @@ export async function getFormulaConfigs(): Promise<CommissionFormulaConfig[]> {
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => {
-    const campaign = row.campaign as { name: string } | null
+    const comercializadora = row.comercializadora as { name: string } | null
     const product = row.product as { name: string } | null
     const creator = row.creator as { full_name: string } | null
     return {
       id: row.id as number,
-      campaign_id: row.campaign_id as number,
+      comercializadora_id: row.comercializadora_id as number,
       product_id: row.product_id as number,
       fee_energia: row.fee_energia as number,
       pct_fee_energia: row.pct_fee_energia as number,
@@ -413,7 +318,7 @@ export async function getFormulaConfigs(): Promise<CommissionFormulaConfig[]> {
       created_by: row.created_by as string,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
-      campaign_name: campaign?.name ?? '',
+      comercializadora_name: comercializadora?.name ?? '',
       product_name: product?.name ?? '',
       created_by_name: creator?.full_name ?? '',
     } satisfies CommissionFormulaConfig
@@ -431,7 +336,7 @@ export async function createFormulaConfig(
     return { ok: false, error: 'Solo ADMIN puede crear fórmulas.' }
   }
 
-  const campaignId = Number(formData.get('campaign_id'))
+  const comercializadoraId = Number(formData.get('comercializadora_id'))
   const productId = Number(formData.get('product_id'))
   const feeEnergia = Number(formData.get('fee_energia') || 0)
   const pctFeeEnergia = Number(formData.get('pct_fee_energia') || 100)
@@ -439,17 +344,17 @@ export async function createFormulaConfig(
   const pctFeePotencia = Number(formData.get('pct_fee_potencia') || 100)
   const comisionServicio = Number(formData.get('comision_servicio') || 0)
 
-  if (!campaignId || !productId) {
-    return { ok: false, error: 'Campaña y producto son obligatorios.' }
+  if (!comercializadoraId || !productId) {
+    return { ok: false, error: 'Comercializadora y producto son obligatorios.' }
   }
 
   const admin = getAdminClient()
 
-  // Desactivar config activa previa para la misma campaña+producto
+  // Desactivar config activa previa para la misma comercializadora+producto
   const { data: existing } = await admin
     .from('commission_formula_config')
     .select('id, version')
-    .eq('campaign_id', campaignId)
+    .eq('comercializadora_id', comercializadoraId)
     .eq('product_id', productId)
     .eq('active', true)
     .maybeSingle()
@@ -466,7 +371,7 @@ export async function createFormulaConfig(
   const { error } = await admin
     .from('commission_formula_config')
     .insert({
-      campaign_id: campaignId,
+      comercializadora_id: comercializadoraId,
       product_id: productId,
       fee_energia: feeEnergia,
       pct_fee_energia: pctFeeEnergia,
@@ -545,17 +450,16 @@ export async function calculateByFormula(configId: number): Promise<FormulaCalcR
 
   if (!config) return { ok: false, error: 'Configuración no encontrada.' }
 
-  // Buscar contratos que coincidan con campaña+producto y no estén bloqueados
+  // Buscar contratos cuyo producto coincida (el producto ya pertenece a una comercializadora)
   const { data: contracts } = await admin
     .from('contracts')
     .select('id, consumo_anual, media_potencia')
-    .eq('campaign_id', config.campaign_id)
     .eq('product_id', config.product_id)
     .is('deleted_at', null)
     .neq('status_commission_gnew', 'bloqueada')
 
   if (!contracts || contracts.length === 0) {
-    return { ok: false, error: 'No se encontraron contratos para esta campaña/producto.' }
+    return { ok: false, error: 'No se encontraron contratos para este producto.' }
   }
 
   let updated = 0
@@ -613,73 +517,35 @@ export async function calculateByFormula(configId: number): Promise<FormulaCalcR
   return { ok: true, contractsUpdated: updated }
 }
 
-// ── 10. getUploadHistory ─────────────────────────────────────────────────────
+// ── 10. getProducts ─────────────────────────────────────────────────────────
 
-export async function getUploadHistory(): Promise<CommissionUpload[]> {
+export async function getProducts(comercializadoraId?: number): Promise<Product[]> {
   const auth = await getAuthProfile()
   if (!auth || auth.role !== 'ADMIN') return []
 
-  const { supabase } = auth
-
-  const { data, error } = await supabase
-    .from('commission_uploads')
-    .select(`
-      *,
-      uploader:profiles!commission_uploads_uploaded_by_fkey(full_name)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  if (error) {
-    console.error('[getUploadHistory]', error.message)
-    return []
-  }
-
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const uploader = row.uploader as { full_name: string } | null
-    return {
-      id: row.id as number,
-      file_name: row.file_name as string,
-      total_rows: row.total_rows as number,
-      updated_rows: row.updated_rows as number,
-      error_rows: row.error_rows as number,
-      errors: row.errors as CommissionUpload['errors'],
-      uploaded_by: row.uploaded_by as string,
-      created_at: row.created_at as string,
-      uploaded_by_name: uploader?.full_name ?? '',
-    } satisfies CommissionUpload
-  })
-}
-
-// ── 11. getCampaigns / getProducts ───────────────────────────────────────────
-
-export async function getCampaigns(): Promise<Campaign[]> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') return []
-
-  const { data } = await auth.supabase
-    .from('campaigns')
-    .select('*')
-    .eq('active', true)
-    .order('name')
-
-  return (data ?? []) as Campaign[]
-}
-
-export async function getProducts(): Promise<Product[]> {
-  const auth = await getAuthProfile()
-  if (!auth || auth.role !== 'ADMIN') return []
-
-  const { data } = await auth.supabase
+  let query = auth.supabase
     .from('products')
     .select('*')
     .eq('active', true)
     .order('name')
 
-  return (data ?? []) as Product[]
+  if (comercializadoraId) {
+    query = query.eq('comercializadora_id', comercializadoraId)
+  }
+
+  const { data } = await query
+
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: row.id as number,
+    name: row.name as string,
+    type: row.type as ProductTipo,
+    comercializadora_id: (row.comercializadora_id as number) ?? null,
+    active: row.active as boolean,
+    created_at: row.created_at as string,
+  })) satisfies Product[]
 }
 
-// ── 12. processRateTableUpload ──────────────────────────────────────────────
+// ── 11. processRateTableUpload ──────────────────────────────────────────────
 
 interface RateTableUploadResult extends ActionResult {
   totals?: { sheets: number; offers: number; rates: number }
@@ -721,12 +587,37 @@ export async function processRateTableUpload(
   const errors: Array<{ sheet?: string; row?: number; error: string }> = []
   let totalOffers = 0
   let totalRates = 0
+  const comercializadoraName = parsed.comercializadora.trim()
+
+  // Upsert comercializadora por nombre → obtener ID
+  const { data: existingComerc } = await admin
+    .from('comercializadoras')
+    .select('id')
+    .eq('name', comercializadoraName)
+    .maybeSingle()
+
+  let comercializadoraId: number
+
+  if (existingComerc) {
+    comercializadoraId = existingComerc.id as number
+  } else {
+    const { data: newComerc, error: comercError } = await admin
+      .from('comercializadoras')
+      .insert({ name: comercializadoraName })
+      .select('id')
+      .single()
+
+    if (comercError || !newComerc) {
+      return { ok: false, error: comercError?.message ?? 'Error al crear comercializadora.' }
+    }
+    comercializadoraId = newComerc.id as number
+  }
 
   // Desactivar versión anterior de esta comercializadora
   const { data: existing } = await admin
     .from('rate_tables')
     .select('id, version')
-    .eq('comercializadora', parsed.comercializadora.trim())
+    .eq('comercializadora_id', comercializadoraId)
     .eq('active', true)
     .maybeSingle()
 
@@ -743,7 +634,7 @@ export async function processRateTableUpload(
   const { data: rateTable, error: rtError } = await admin
     .from('rate_tables')
     .insert({
-      comercializadora: parsed.comercializadora.trim(),
+      comercializadora_id: comercializadoraId,
       version: newVersion,
       active: true,
       uploaded_by: auth.userId,
@@ -756,6 +647,31 @@ export async function processRateTableUpload(
   }
 
   const rateTableId = rateTable.id as number
+
+  // Auto-crear productos por cada hoja del Excel
+  for (const sheet of parsed.sheets) {
+    const sheetName = sheet.tarifa
+    // Inferir tipo de producto a partir de la tarifa
+    const isGas = sheetName.startsWith('RL.')
+    const productType: ProductTipo = isGas ? 'gas_empresa' : 'luz_empresa'
+
+    // Upsert producto con nombre = nombre de hoja, vinculado a esta comercializadora
+    const { data: existingProduct } = await admin
+      .from('products')
+      .select('id')
+      .eq('name', sheetName)
+      .eq('comercializadora_id', comercializadoraId)
+      .maybeSingle()
+
+    if (!existingProduct) {
+      await admin.from('products').insert({
+        name: sheetName,
+        type: productType,
+        comercializadora_id: comercializadoraId,
+        active: true,
+      })
+    }
+  }
 
   // Insertar sheets, offers y rates
   for (const sheet of parsed.sheets) {
@@ -827,7 +743,7 @@ export async function processRateTableUpload(
   await admin.from('rate_table_uploads').insert({
     rate_table_id: rateTableId,
     file_name: fileName,
-    comercializadora: parsed.comercializadora.trim(),
+    comercializadora_id: comercializadoraId,
     totals,
     errors: errors.length > 0 ? errors : null,
     uploaded_by: auth.userId,
@@ -837,14 +753,14 @@ export async function processRateTableUpload(
   await admin.from('audit_log').insert({
     user_id: auth.userId,
     action: 'rate_table_upload',
-    details: { file_name: fileName, comercializadora: parsed.comercializadora, totals, errors_count: errors.length },
+    details: { file_name: fileName, comercializadora: comercializadoraName, totals, errors_count: errors.length },
   })
 
   revalidatePath('/comisionado')
   return { ok: true, totals, errors: errors.length > 0 ? errors : undefined }
 }
 
-// ── 13. getRateTables ───────────────────────────────────────────────────────
+// ── 12. getRateTables ───────────────────────────────────────────────────────
 
 export async function getRateTables(): Promise<RateTable[]> {
   const auth = await getAuthProfile()
@@ -856,6 +772,7 @@ export async function getRateTables(): Promise<RateTable[]> {
     .from('rate_tables')
     .select(`
       *,
+      comercializadora:comercializadoras!rate_tables_comercializadora_id_fkey(name),
       uploader:profiles!rate_tables_uploaded_by_fkey(full_name)
     `)
     .eq('active', true)
@@ -867,10 +784,12 @@ export async function getRateTables(): Promise<RateTable[]> {
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => {
+    const comercializadora = row.comercializadora as { name: string } | null
     const uploader = row.uploader as { full_name: string } | null
     return {
       id: row.id as number,
-      comercializadora: row.comercializadora as string,
+      comercializadora_id: row.comercializadora_id as number,
+      comercializadora_name: comercializadora?.name ?? '',
       version: row.version as number,
       active: row.active as boolean,
       notes: row.notes as string | null,
@@ -882,7 +801,7 @@ export async function getRateTables(): Promise<RateTable[]> {
   })
 }
 
-// ── 14. getRateTableUploadHistory ───────────────────────────────────────────
+// ── 13. getRateTableUploadHistory ───────────────────────────────────────────
 
 export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
   const auth = await getAuthProfile()
@@ -894,6 +813,7 @@ export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
     .from('rate_table_uploads')
     .select(`
       *,
+      comercializadora:comercializadoras!rate_table_uploads_comercializadora_id_fkey(name),
       uploader:profiles!rate_table_uploads_uploaded_by_fkey(full_name)
     `)
     .order('created_at', { ascending: false })
@@ -905,12 +825,14 @@ export async function getRateTableUploadHistory(): Promise<RateTableUpload[]> {
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => {
+    const comercializadora = row.comercializadora as { name: string } | null
     const uploader = row.uploader as { full_name: string } | null
     return {
       id: row.id as number,
       rate_table_id: row.rate_table_id as number,
       file_name: row.file_name as string,
-      comercializadora: row.comercializadora as string,
+      comercializadora_id: (row.comercializadora_id as number) ?? null,
+      comercializadora_name: comercializadora?.name ?? '',
       totals: row.totals as RateTableUpload['totals'],
       errors: row.errors as RateTableUpload['errors'],
       uploaded_by: row.uploaded_by as string,

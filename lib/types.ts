@@ -378,10 +378,18 @@ export interface Campaign {
   created_at: string
 }
 
+export interface Comercializadora {
+  id: number
+  name: string
+  active: boolean
+  created_at: string
+}
+
 export interface Product {
   id: number
   name: string
   type: ProductTipo
+  comercializadora_id: number | null
   active: boolean
   created_at: string
 }
@@ -624,7 +632,7 @@ export const COMMISSION_GNEW_STATUS_CONFIG: Record<CommissionGnewStatus, { label
 
 export interface CommissionFormulaConfig {
   id: number
-  campaign_id: number
+  comercializadora_id: number
   product_id: number
   fee_energia: number
   pct_fee_energia: number
@@ -637,7 +645,7 @@ export interface CommissionFormulaConfig {
   created_at: string
   updated_at: string
   // Joins opcionales
-  campaign_name?: string
+  comercializadora_name?: string
   product_name?: string
   created_by_name?: string
 }
@@ -723,7 +731,8 @@ export const ALL_TARIFAS: TarifaAcceso[] = [...TARIFAS_ELECTRICIDAD, ...TARIFAS_
 
 export interface RateTable {
   id: number
-  comercializadora: string
+  comercializadora_id: number
+  comercializadora_name?: string
   version: number
   active: boolean
   notes: string | null
@@ -760,7 +769,8 @@ export interface RateTableUpload {
   id: number
   rate_table_id: number
   file_name: string
-  comercializadora: string
+  comercializadora_id: number | null
+  comercializadora_name?: string
   totals: { sheets: number; offers: number; rates: number } | null
   errors: Array<{ sheet?: string; row?: number; error: string }> | null
   uploaded_by: string
