@@ -1,20 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Coins, Building2, Users2, Table2 } from 'lucide-react'
+import { Coins, Building2, Users2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CommissionLines } from '@/components/comisionado/CommissionLines'
 import { EnergyCompanyManager } from '@/components/comisionado/EnergyCompanyManager'
 import { CommissionTiersPanel } from '@/components/comisionado/CommissionTiersPanel'
-import { RateTableUpload } from '@/components/comisionado/RateTableUpload'
 import type {
   UserProfile, CommissionLineListResult,
   EnergyCompany, EnergyProduct, CommissionTier,
-  Comercializadora, Product,
-  RateTable, RateTableUpload as RateTableUploadType,
 } from '@/lib/types'
 
-type Tab = 'lineas' | 'comercializadoras' | 'comisionados' | 'tablas_legacy'
+type Tab = 'lineas' | 'comercializadoras' | 'comisionados'
 
 interface CommissionDashboardProps {
   currentUser: UserProfile
@@ -22,10 +19,6 @@ interface CommissionDashboardProps {
   energyCompanies: EnergyCompany[]
   energyProducts: EnergyProduct[]
   commissionTiers: CommissionTier[]
-  rateTables: RateTable[]
-  rateTableUploads: RateTableUploadType[]
-  comercializadoras: Comercializadora[]
-  products: Product[]
   isAdmin: boolean
 }
 
@@ -35,8 +28,6 @@ export function CommissionDashboard({
   energyCompanies,
   energyProducts,
   commissionTiers,
-  rateTables,
-  rateTableUploads,
   isAdmin,
 }: CommissionDashboardProps) {
   const [tab, setTab] = useState<Tab>('lineas')
@@ -96,18 +87,6 @@ export function CommissionDashboard({
               <Users2 className="h-4 w-4" />
               Comisionados
             </button>
-            <button
-              onClick={() => setTab('tablas_legacy')}
-              className={cn(
-                'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all',
-                tab === 'tablas_legacy'
-                  ? 'bg-primary/15 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Table2 className="h-4 w-4" />
-              Tablas
-            </button>
           </>
         )}
       </div>
@@ -120,13 +99,8 @@ export function CommissionDashboard({
           companies={energyCompanies}
           products={energyProducts}
         />
-      ) : tab === 'comisionados' ? (
-        <CommissionTiersPanel tiers={commissionTiers} />
       ) : (
-        <RateTableUpload
-          rateTables={rateTables}
-          rateTableUploads={rateTableUploads}
-        />
+        <CommissionTiersPanel tiers={commissionTiers} />
       )}
     </div>
   )

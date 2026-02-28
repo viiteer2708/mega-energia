@@ -930,3 +930,57 @@ export interface ParsedCommissionExcel {
     }>
   }>
 }
+
+// ── Commission Upload v2 ────────────────────────────────────────────────────
+
+export interface CommissionUploadV2 {
+  id: number
+  company_id: number
+  file_name: string
+  file_path: string | null
+  records_created: number
+  records_updated: number
+  products_created: number
+  summary: {
+    tariffs: Record<string, { products: number; rates_created: number; rates_updated: number }>
+    total_products: number
+    total_rates: number
+  } | null
+  uploaded_by: string
+  created_at: string
+  // Joins opcionales
+  company_name?: string
+  uploaded_by_name?: string
+}
+
+export interface CommissionValidationError {
+  type: 'overlap' | 'empty_field' | 'negative' | 'min_gt_max' | 'empty_name' | 'invalid_tariff' | 'duplicate_product'
+  message: string
+  tariff?: string
+  product?: string
+  row?: number
+}
+
+export interface CommissionValidationWarning {
+  type: 'empty_sheet' | 'gap_in_ranges' | 'product_no_rates'
+  message: string
+  tariff?: string
+  product?: string
+}
+
+export interface CommissionValidationResult {
+  valid: boolean
+  errors: CommissionValidationError[]
+  warnings: CommissionValidationWarning[]
+  summary: {
+    new_products: string[]
+    existing_products: string[]
+    rates_by_tariff: Record<string, { new_count: number; update_count: number }>
+    total_rates: number
+  }
+}
+
+export const VALID_TARIFF_SHEETS = [
+  '2.0TD', '3.0TD', '6.1TD', '6.2TD', '6.3TD', '6.4TD',
+  'RL.1', 'RL.2', 'RL.3', 'RL.4', 'RL.5', 'RL.6',
+] as const

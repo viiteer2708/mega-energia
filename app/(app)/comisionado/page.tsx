@@ -6,10 +6,6 @@ import {
   getEnergyCompanies,
   getEnergyProducts,
   getCommissionTiers,
-  getRateTables,
-  getRateTableUploadHistory,
-  getComercializadoras,
-  getProducts,
 } from './actions'
 import { CommissionDashboard } from '@/components/comisionado/CommissionDashboard'
 
@@ -26,19 +22,11 @@ export default async function ComisionadoPage() {
     energyCompanies,
     energyProducts,
     commissionTiers,
-    rateTables,
-    rateTableUploads,
-    comercializadoras,
-    products,
   ] = await Promise.all([
     getCommissionLines(),
     isAdmin ? getEnergyCompanies() : Promise.resolve([]),
     isAdmin ? getEnergyProducts() : Promise.resolve([]),
     isAdmin ? getCommissionTiers() : Promise.resolve([]),
-    isAdmin ? getRateTables() : Promise.resolve([]),
-    isAdmin ? getRateTableUploadHistory() : Promise.resolve([]),
-    isAdmin ? getComercializadoras() : Promise.resolve([]),
-    isAdmin ? getProducts() : Promise.resolve([]),
   ])
 
   return (
@@ -48,10 +36,6 @@ export default async function ComisionadoPage() {
       energyCompanies={energyCompanies}
       energyProducts={energyProducts}
       commissionTiers={commissionTiers}
-      rateTables={rateTables}
-      rateTableUploads={rateTableUploads}
-      comercializadoras={comercializadoras}
-      products={products}
       isAdmin={isAdmin}
     />
   )
