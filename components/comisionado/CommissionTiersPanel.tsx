@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Users2, Plus, Pencil, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PercentageInput } from './PercentageInput'
 import { upsertCommissionTier } from '@/app/(app)/comisionado/actions'
 import type { CommissionTier } from '@/lib/types'
 
@@ -59,13 +60,10 @@ export function CommissionTiersPanel({ tiers }: Props) {
                       <input name="name" defaultValue={tier.name} className={inputClass} placeholder="Nombre" />
                     </div>
                     <div className="w-32">
-                      <input
+                      <PercentageInput
                         name="rate_pct"
-                        type="number"
-                        step="0.0001"
-                        defaultValue={tier.rate_pct ?? ''}
-                        className={inputClass}
-                        placeholder="NULL = VIP"
+                        defaultValue={tier.rate_pct}
+                        placeholder="VIP"
                       />
                     </div>
                     <div className="w-20">
@@ -105,7 +103,10 @@ export function CommissionTiersPanel({ tiers }: Props) {
                 </div>
                 <div>
                   <label className={labelClass}>% sobre payout</label>
-                  <input name="rate_pct" type="number" step="0.0001" className={inputClass} placeholder="Vacío = VIP" />
+                  <PercentageInput
+                    name="rate_pct"
+                    placeholder="VIP"
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>Orden</label>

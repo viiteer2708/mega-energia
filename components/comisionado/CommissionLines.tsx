@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import {
   Search, ChevronLeft, ChevronRight, Coins,
-  MoreHorizontal, CheckCircle, Ban, Clock, ShieldAlert,
+  CheckCircle, Ban, Clock, ShieldAlert,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,13 +25,19 @@ const inputClass =
 
 const PAGO_STATUSES: PagoStatus[] = ['pendiente', 'pagado', 'anulado', 'retenido']
 
+const STATUS_ICONS: Record<PagoStatus, React.ReactNode> = {
+  pagado: <CheckCircle className="h-3 w-3 text-green-400" />,
+  pendiente: <Clock className="h-3 w-3 text-amber-400" />,
+  anulado: <Ban className="h-3 w-3 text-red-400" />,
+  retenido: <ShieldAlert className="h-3 w-3 text-orange-400" />,
+}
+
 interface CommissionLinesProps {
   initialData: CommissionLineListResult
   isAdmin: boolean
 }
 
 export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
@@ -40,9 +46,11 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
   const [statusFilter, setStatusFilter] = useState<PagoStatus | ''>(
     (searchParams.get('status_pago') as PagoStatus) ?? ''
   )
-  const [actionLineId, setActionLineId] = useState<number | null>(null)
-  const [decoLineId, setDecoLineId] = useState<number | null>(null)
+  const [editingLineId, setEditingLineId] = useState<number | null>(null)
   const [decoAmount, setDecoAmount] = useState('')
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
 
   // Debounced search & filter
   useEffect(() => {
@@ -74,8 +82,6 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
     const fechaPago = newStatus === 'pagado' ? new Date().toISOString().split('T')[0] : undefined
     const result = await updateCommissionLineStatus(lineId, newStatus, fechaPago)
     if (result.ok) {
-      setActionLineId(null)
-      // Refresh
       startTransition(async () => {
         const updated = await getCommissionLines({
           search: search || undefined,
@@ -92,7 +98,7 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
     if (isNaN(amount) || amount < 0) return
     const result = await applyDecomission(lineId, amount)
     if (result.ok) {
-      setDecoLineId(null)
+      setEditingLineId(null)
       setDecoAmount('')
       startTransition(async () => {
         const updated = await getCommissionLines({
@@ -105,33 +111,26 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
     }
   }
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n)
-
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <p className="text-sm text-muted-foreground">
-          {data.total} línea{data.total !== 1 ? 's' : ''} de comisión
-        </p>
+      <p className="text-sm text-muted-foreground">
+        {data.total} linea{data.total !== 1 ? 's' : ''} de comision
+      </p>
+
+      {/* Busqueda */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por titular, CUPS o comercial..."
+          className={`${inputClass} pl-9`}
+        />
       </div>
 
-      {/* Búsqueda */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por titular, CUPS o comercial..."
-            className={`${inputClass} pl-9`}
-          />
-        </div>
-      </div>
-
-      {/* Chips de estado de pago */}
+      {/* Chips de estado */}
       <div className="flex flex-wrap gap-2">
         <Badge
           variant="outline"
@@ -145,16 +144,15 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
         </Badge>
         {PAGO_STATUSES.map(status => {
           const config = PAGO_STATUS_CONFIG[status]
-          const isActive = statusFilter === status
           return (
             <Badge
               key={status}
               variant="outline"
               className={cn(
                 'cursor-pointer transition-colors',
-                isActive ? config.color : 'hover:bg-accent'
+                statusFilter === status ? config.color : 'hover:bg-accent'
               )}
-              onClick={() => setStatusFilter(isActive ? '' : status)}
+              onClick={() => setStatusFilter(statusFilter === status ? '' : status)}
             >
               {config.label}
             </Badge>
@@ -162,65 +160,86 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
         })}
       </div>
 
-      {/* Tabla */}
+      {/* Tabla desktop */}
       {data.lines.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Coins className="mb-3 h-12 w-12 text-muted-foreground/30" />
-            <p className="text-muted-foreground">No hay líneas de comisión</p>
+            <p className="text-muted-foreground">No hay lineas de comision</p>
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                    <th className="px-4 py-3">Contrato</th>
-                    <th className="px-4 py-3">Comercial</th>
-                    {isAdmin && <th className="px-4 py-3">Comisión GNE</th>}
-                    {isAdmin && <th className="px-4 py-3">Estado GNE</th>}
-                    <th className="px-4 py-3">Comisión pagada</th>
-                    <th className="px-4 py-3">Decomisión</th>
-                    <th className="px-4 py-3">Estado pago</th>
-                    <th className="px-4 py-3">Fecha pago</th>
-                    <th className="px-4 py-3">Notas</th>
-                    {isAdmin && <th className="px-4 py-3">Acciones</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.lines.map(line => (
-                    <LineRow
-                      key={line.id}
-                      line={line}
-                      isAdmin={isAdmin}
-                      actionLineId={actionLineId}
-                      decoLineId={decoLineId}
-                      decoAmount={decoAmount}
-                      onToggleAction={(id) => setActionLineId(actionLineId === id ? null : id)}
-                      onStatusChange={handleStatusChange}
-                      onToggleDeco={(id) => {
-                        setDecoLineId(decoLineId === id ? null : id)
-                        setDecoAmount(String(line.decomission || ''))
-                      }}
-                      onDecoAmountChange={setDecoAmount}
-                      onDecoSubmit={handleDecomission}
-                      formatCurrency={formatCurrency}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          {/* Desktop table */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+                      <th className="px-4 py-3">Contrato</th>
+                      <th className="px-4 py-3">Comercial</th>
+                      {isAdmin && <th className="px-4 py-3">GNE / Estado</th>}
+                      <th className="px-4 py-3">Pagada / Deco.</th>
+                      <th className="px-4 py-3">Estado pago</th>
+                      <th className="px-4 py-3">Fecha</th>
+                      {isAdmin && <th className="px-4 py-3 w-32">Acciones</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.lines.map(line => (
+                      <DesktopRow
+                        key={line.id}
+                        line={line}
+                        isAdmin={isAdmin}
+                        isEditing={editingLineId === line.id}
+                        decoAmount={decoAmount}
+                        onStatusChange={handleStatusChange}
+                        onStartDeco={() => {
+                          setEditingLineId(line.id)
+                          setDecoAmount(String(line.decomission || ''))
+                        }}
+                        onDecoAmountChange={setDecoAmount}
+                        onDecoSubmit={() => handleDecomission(line.id)}
+                        onCancelDeco={() => { setEditingLineId(null); setDecoAmount('') }}
+                        formatCurrency={formatCurrency}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-2">
+            {data.lines.map(line => (
+              <MobileCard
+                key={line.id}
+                line={line}
+                isAdmin={isAdmin}
+                isEditing={editingLineId === line.id}
+                decoAmount={decoAmount}
+                onStatusChange={handleStatusChange}
+                onStartDeco={() => {
+                  setEditingLineId(line.id)
+                  setDecoAmount(String(line.decomission || ''))
+                }}
+                onDecoAmountChange={setDecoAmount}
+                onDecoSubmit={() => handleDecomission(line.id)}
+                onCancelDeco={() => { setEditingLineId(null); setDecoAmount('') }}
+                formatCurrency={formatCurrency}
+              />
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Paginación */}
+      {/* Paginacion */}
       {data.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Página {data.page} de {data.totalPages}
+            Pagina {data.page} de {data.totalPages}
           </p>
           <div className="flex gap-2">
             <Button
@@ -248,27 +267,26 @@ export function CommissionLines({ initialData, isAdmin }: CommissionLinesProps) 
   )
 }
 
-// ── Subcomponente de fila ────────────────────────────────────────────────────
+// ── Desktop row ──────────────────────────────────────────────────────────────
 
-interface LineRowProps {
+interface RowProps {
   line: CommissionLineItem
   isAdmin: boolean
-  actionLineId: number | null
-  decoLineId: number | null
+  isEditing: boolean
   decoAmount: string
-  onToggleAction: (id: number) => void
   onStatusChange: (id: number, status: PagoStatus) => void
-  onToggleDeco: (id: number) => void
+  onStartDeco: () => void
   onDecoAmountChange: (val: string) => void
-  onDecoSubmit: (id: number) => void
+  onDecoSubmit: () => void
+  onCancelDeco: () => void
   formatCurrency: (n: number) => string
 }
 
-function LineRow({
-  line, isAdmin, actionLineId, decoLineId, decoAmount,
-  onToggleAction, onStatusChange, onToggleDeco, onDecoAmountChange, onDecoSubmit,
+function DesktopRow({
+  line, isAdmin, isEditing, decoAmount,
+  onStatusChange, onStartDeco, onDecoAmountChange, onDecoSubmit, onCancelDeco,
   formatCurrency,
-}: LineRowProps) {
+}: RowProps) {
   const pagoConfig = PAGO_STATUS_CONFIG[line.status_pago]
   const gnewConfig = COMMISSION_GNEW_STATUS_CONFIG[line.status_commission_gnew]
   const cupsShort = line.cups
@@ -283,101 +301,163 @@ function LineRow({
       </td>
       <td className="px-4 py-3 text-muted-foreground">{line.user_name}</td>
       {isAdmin && (
-        <td className="px-4 py-3 font-medium text-foreground">
-          {formatCurrency(line.commission_gnew)}
-        </td>
-      )}
-      {isAdmin && (
         <td className="px-4 py-3">
-          <Badge variant="outline" className={gnewConfig.color}>
+          <div className="font-medium text-foreground">{formatCurrency(line.commission_gnew)}</div>
+          <Badge variant="outline" className={`${gnewConfig.color} text-[10px] mt-0.5`}>
             {gnewConfig.label}
           </Badge>
         </td>
       )}
-      <td className="px-4 py-3 font-medium text-foreground">
-        {formatCurrency(line.commission_paid)}
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {line.decomission > 0 ? formatCurrency(line.decomission) : '—'}
+      <td className="px-4 py-3">
+        <div className="font-medium text-foreground">{formatCurrency(line.commission_paid)}</div>
+        {isEditing ? (
+          <div className="flex items-center gap-1 mt-1">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={decoAmount}
+              onChange={(e) => onDecoAmountChange(e.target.value)}
+              className="h-6 w-20 rounded border border-primary/40 bg-background px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') onDecoSubmit()
+                if (e.key === 'Escape') onCancelDeco()
+              }}
+            />
+            <button onClick={onDecoSubmit} className="text-green-400 hover:text-green-300 text-xs">OK</button>
+            <button onClick={onCancelDeco} className="text-muted-foreground hover:text-foreground text-xs">X</button>
+          </div>
+        ) : (
+          <button
+            onClick={isAdmin ? onStartDeco : undefined}
+            className={cn(
+              'text-xs text-muted-foreground',
+              isAdmin && 'hover:text-primary cursor-pointer'
+            )}
+            disabled={!isAdmin}
+          >
+            Deco: {line.decomission > 0 ? formatCurrency(line.decomission) : '—'}
+          </button>
+        )}
       </td>
       <td className="px-4 py-3">
-        <Badge variant="outline" className={pagoConfig.color}>
-          {pagoConfig.label}
-        </Badge>
+        {isAdmin ? (
+          <select
+            value={line.status_pago}
+            onChange={e => onStatusChange(line.id, e.target.value as PagoStatus)}
+            className="h-7 rounded border border-border bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {PAGO_STATUSES.map(s => (
+              <option key={s} value={s}>{PAGO_STATUS_CONFIG[s].label}</option>
+            ))}
+          </select>
+        ) : (
+          <Badge variant="outline" className={pagoConfig.color}>
+            {pagoConfig.label}
+          </Badge>
+        )}
       </td>
-      <td className="px-4 py-3 text-muted-foreground">
+      <td className="px-4 py-3 text-xs text-muted-foreground">
         {line.fecha_pago ?? '—'}
       </td>
-      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[150px] truncate" title={line.notes ?? ''}>
-        {line.notes ?? '—'}
-      </td>
       {isAdmin && (
-        <td className="px-4 py-3">
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleAction(line.id)}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+        <td className="px-4 py-3 text-xs text-muted-foreground max-w-[120px] truncate" title={line.notes ?? ''}>
+          {line.notes ?? '—'}
+        </td>
+      )}
+    </tr>
+  )
+}
 
-            {/* Dropdown acciones */}
-            {actionLineId === line.id && (
-              <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-border bg-card p-1 shadow-lg">
-                <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Cambiar estado</p>
-                {PAGO_STATUSES.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => onStatusChange(line.id, s)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
-                  >
-                    {s === 'pagado' && <CheckCircle className="h-3.5 w-3.5 text-green-400" />}
-                    {s === 'pendiente' && <Clock className="h-3.5 w-3.5 text-amber-400" />}
-                    {s === 'anulado' && <Ban className="h-3.5 w-3.5 text-red-400" />}
-                    {s === 'retenido' && <ShieldAlert className="h-3.5 w-3.5 text-orange-400" />}
-                    {PAGO_STATUS_CONFIG[s].label}
-                  </button>
-                ))}
-                <div className="my-1 border-t border-border" />
-                <button
-                  onClick={() => {
-                    onToggleAction(line.id)
-                    onToggleDeco(line.id)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
-                >
-                  Aplicar decomisión
-                </button>
-              </div>
-            )}
+// ── Mobile card ──────────────────────────────────────────────────────────────
 
-            {/* Inline decomisión */}
-            {decoLineId === line.id && (
-              <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-border bg-card p-3 shadow-lg space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Decomisión</p>
+function MobileCard({
+  line, isAdmin, isEditing, decoAmount,
+  onStatusChange, onStartDeco, onDecoAmountChange, onDecoSubmit, onCancelDeco,
+  formatCurrency,
+}: RowProps) {
+  const pagoConfig = PAGO_STATUS_CONFIG[line.status_pago]
+  const cupsShort = line.cups
+    ? `${line.cups.slice(0, 10)}...${line.cups.slice(-4)}`
+    : '—'
+
+  return (
+    <Card>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-medium text-sm">{line.titular_contrato || '(sin titular)'}</div>
+            <div className="text-xs font-mono text-muted-foreground">{cupsShort}</div>
+          </div>
+          <Badge variant="outline" className={pagoConfig.color}>
+            {pagoConfig.label}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-muted-foreground block">Comercial</span>
+            <span className="font-medium">{line.user_name}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground block">Comision pagada</span>
+            <span className="font-medium">{formatCurrency(line.commission_paid)}</span>
+          </div>
+          {isAdmin && (
+            <div>
+              <span className="text-muted-foreground block">Comision GNE</span>
+              <span className="font-medium">{formatCurrency(line.commission_gnew)}</span>
+            </div>
+          )}
+          <div>
+            <span className="text-muted-foreground block">Decomision</span>
+            {isEditing ? (
+              <div className="flex items-center gap-1 mt-0.5">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={decoAmount}
                   onChange={(e) => onDecoAmountChange(e.target.value)}
-                  className={inputClass}
-                  placeholder="0.00"
+                  className="h-6 w-20 rounded border border-primary/40 bg-background px-1.5 text-xs font-mono"
+                  autoFocus
                 />
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => onDecoSubmit(line.id)}>
-                    Aplicar
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onToggleDeco(line.id)}>
-                    Cancelar
-                  </Button>
-                </div>
+                <button onClick={onDecoSubmit} className="text-green-400 text-xs">OK</button>
+                <button onClick={onCancelDeco} className="text-muted-foreground text-xs">X</button>
               </div>
+            ) : (
+              <button
+                onClick={isAdmin ? onStartDeco : undefined}
+                className={cn('font-medium', isAdmin && 'hover:text-primary cursor-pointer')}
+                disabled={!isAdmin}
+              >
+                {line.decomission > 0 ? formatCurrency(line.decomission) : '—'}
+              </button>
             )}
           </div>
-        </td>
-      )}
-    </tr>
+        </div>
+
+        {isAdmin && (
+          <div className="flex gap-1 pt-1">
+            {PAGO_STATUSES.map(s => (
+              <button
+                key={s}
+                onClick={() => onStatusChange(line.id, s)}
+                className={cn(
+                  'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
+                  line.status_pago === s
+                    ? 'bg-primary/20 text-primary'
+                    : 'hover:bg-accent text-muted-foreground'
+                )}
+              >
+                {STATUS_ICONS[s]}
+                {PAGO_STATUS_CONFIG[s].label}
+              </button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

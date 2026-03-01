@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Coins, Building2, Users2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CommissionLines } from '@/components/comisionado/CommissionLines'
-import { EnergyCompanyManager } from '@/components/comisionado/EnergyCompanyManager'
+import { CompanyMasterDetail } from '@/components/comisionado/CompanyMasterDetail'
 import { CommissionTiersPanel } from '@/components/comisionado/CommissionTiersPanel'
 import type {
   UserProfile, CommissionLineListResult,
@@ -42,7 +42,7 @@ export function CommissionDashboard({
         <div>
           <h1 className="text-xl font-bold text-foreground">Comisionado</h1>
           <p className="text-sm text-muted-foreground">
-            Motor de comisiones — comercializadoras, fórmulas, tablas y pagos
+            Motor de comisiones — comercializadoras, formulas, tablas y pagos
           </p>
         </div>
       </div>
@@ -59,7 +59,7 @@ export function CommissionDashboard({
           )}
         >
           <Coins className="h-4 w-4" />
-          Líneas
+          Lineas
         </button>
         {isAdmin && (
           <>
@@ -95,7 +95,7 @@ export function CommissionDashboard({
       {tab === 'lineas' ? (
         <CommissionLines initialData={initialLines} isAdmin={isAdmin} />
       ) : tab === 'comercializadoras' ? (
-        <EnergyCompanyManager
+        <CompanyMasterDetail
           companies={energyCompanies}
           products={energyProducts}
         />
